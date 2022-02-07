@@ -16,7 +16,7 @@ A work in progress, but currently supports 3 APIs:
 Returns table of discovered devices and their data (can include name, alternative domain names, IP address, port, device info; depends on record type returned)
   
   
-**get_ip**(<domain_name>)
+**get_ip**(<*domain_name*>)
 
 - domain_name - typically <*instancename*>.local 
 
