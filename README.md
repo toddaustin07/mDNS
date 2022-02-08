@@ -30,5 +30,11 @@ Returns device table including IP address
 
 Returns device table including both IP and port number
 
+### Update Log
+02/08/22 01:02    Handle spaces in names; add processing for Authority and Additional Information records
+                  Next: improve collating of records
+
+
+
 ## Future additions
 I may add a monitoring function for maintaining ongoing status on device presence, and notifications for new services
