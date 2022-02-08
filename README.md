@@ -1,7 +1,9 @@
 # mDNS
 A Lua library for discovering devices (services) and their address via Multicast DNS.
 
-This is intended to be a robust implementation, designed to be able to read and parse all valid DNS response records including proper handling of compressed labels.  The current code supports the following response record types:  A, PTR, SRV, TXT.  The API is quite simple to use and returns DNS response record data in easy-to-use Lua tables.
+This is intended to be a robust implementation, designed to be able to read and parse all valid DNS response records including proper handling of compressed labels.  The current code supports the following response record types:  A, PTR, SRV, TXT.  
+
+The API is quite simple to use and returns DNS response record data in easy-to-use Lua tables.
 
 
 ## API
