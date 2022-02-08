@@ -140,7 +140,7 @@ local function make_labels(name)
 
   local labels = {}
   
-  for label in string.gmatch(name, "[%a%d-_]+") do
+  for label in string.gmatch(name, "[^%.]+") do
     table.insert(labels, string.pack("> s1", label))
   end
   
@@ -364,7 +364,7 @@ local function process_response(msgdata)
         
         local next_answer = msgdata:sub(13)
           
-        for item = 1, ancount do
+        for item = 1, (ancount+nscount+arcount) do
 
           local answer_record  = parse_answer(next_answer, msgdata)
           
@@ -475,8 +475,8 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
         local response_data, rip, _ = m:receivefrom()
         if response_data then
         
-          --print (string.format('Received response from %s:', rip))
-          --print (hex_dump(response_data))
+          print (string.format('Received response from %s:', rip))
+          print (hex_dump(response_data))
           
           local records = process_response(response_data)
           
@@ -524,8 +524,7 @@ local function collate(collection)
       for key, value in pairs(records) do
         if key == 'Name' then
         
-          --local instance = value:match('^([%w%s~`!@#&{}_,/\\|":;<>%^%$%(%)%%%[%]%*%+%-%?]+)%.')
-          instance = value:match('^([^.]+)%.')
+          instance = value:match('^([^%.]+)%.')
           if not instance then
             instance = value
           end
@@ -533,7 +532,7 @@ local function collate(collection)
           if not collated[instance] then
             collated[instance] = {}
             collated[instance].domains = {}
-            table.insert(collated[instance].domains, value)
+            --table.insert(collated[instance].domains, value)
           end
         end
       end
