@@ -21,8 +21,10 @@
 
 --]]
 
---local cosock = require "cosock"
-local socket = require "socket"
+local cosock = require "cosock"
+local socket = require "cosock.socket"
+--local socket = require "socket"
+local log = require "log"
 
 ----------------------------------------------------------------------------------------------
 --                          DNS Message Constants
@@ -127,18 +129,18 @@ local function init_sockets()
   local m = socket.udp()
   
   if not m then
-    print ('UDP multicast socket creation failed')
+    log.error ('UDP multicast socket creation failed')
     return
   end
 
-  --assert(m:setoption('reuseaddr', true))
+  assert(m:setoption('reuseaddr', true))
   rc, msg = m:setsockname(mdnsADDRESS, mdnsPORT)
   if not rc then
-    print ('multicast setsockname error:', msg)
+    log.error ('multicast setsockname error:', msg)
     return
   end
 
-  assert(m:setoption("ip-add-membership", {multiaddr = mdnsADDRESS, interface = "*"}), "join multicast group")
+  assert(m:setoption("ip-add-membership", {multiaddr = mdnsADDRESS, interface = "0.0.0.0"}), "join multicast group")
   --]]
 
   -- Unicast socket
@@ -146,13 +148,13 @@ local function init_sockets()
   local u = socket.udp()
   
   if not u then
-    print ('UDP unicast socket creation failed')
+    log.error ('UDP unicast socket creation failed')
     return
   end
   
   rc, msg = u:setsockname(listen_ip, listen_port)
   if not rc then
-    print ('unicast setsockname error:', msg)
+    log.error ('unicast setsockname error:', msg)
     return
   end
 
@@ -200,7 +202,7 @@ local function dns_send(m, rrtype, name)
   local rc, msg
   rc, msg = m:sendto(question, mdnsADDRESS, mdnsPORT)
   if not rc then
-    print ('Send error:', msg)
+    log.error ('Send error:', msg)
     return
   else
     return true
@@ -226,7 +228,7 @@ local function get_label(nameptr, fullmsg)
       return _, len, false
     end
   else
-    print ('***Error: unexpected null string length')
+    log.error ('***Error: unexpected null string length')
   end
 end
 
@@ -264,7 +266,7 @@ local function build_name_from_labels(data, fullmsg)
         end
       end
     else
-      print ('***Error: no string length found')
+      log.error ('***Error: no string length found')
     end
   end
   
@@ -277,10 +279,10 @@ local function build_name_from_labels(data, fullmsg)
     suffixdata = data:sub(nxtlblidx+2)
   else
     suffixdata = data:sub(nxtlblidx)        -- this shouldn't happen
-    print ('***UNEXPECTED ERROR: ~0 len & endflag false') 
+    log.error ('***UNEXPECTED ERROR: ~0 len & endflag false') 
   end
   
-  print ('built name:', name, totalnamelen)
+  log.debug ('built name:', name, totalnamelen)
   
   return name, totalnamelen, suffixdata
 
@@ -349,7 +351,7 @@ local function parse_txt(txt)
           if key then
             itemtable[key] = ''
           else
-            print ("ERROR parsing key")
+            log.error ("ERROR parsing key")
           end
         else
           if value then
@@ -477,34 +479,17 @@ local function process_response(msgdata)
         return record_table
         
       else
-        print ('Warning; No response records')
+        log.warn ('Warning; No response records')
       end
     --else
       --print ('Not authoritative answer')
     end
   else
-    print ('Warning: Transaction ID not 0')
+    log.warn ('Warning: Transaction ID not 0')
   end
     
 end
 
-local function dump_to_file(records)
-
-  local logfile = io.open ('./mdns.log', 'a')
-  local writerec
-              
-  for i, value1 in ipairs(records) do
-    writerec = string.format('\nRecord #%d:\n', i)
-    logfile:write (writerec)
-    for key, value2 in pairs(value1) do
-      writerec = string.format('\t%s: %s\n',key, value2)
-      logfile:write (writerec)
-    end
-  end
-  logfile:write ('--------------------------------------------------\n')
-  logfile:close()
-
-end
 
 local function strip_local(name)
 
@@ -544,13 +529,12 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
               
               if response_data then
               
-                print (string.format('Received response from %s:', rip))
-                print (hex_dump(response_data))
+                -- log.debug (string.format('Received response from %s:', rip))
+                -- log.debug (hex_dump(response_data))
                 
                 local records = process_response(response_data)
                 
                 if records then
-                  dump_to_file(records)
                 
                   if queryflag == true then
                     local _name = name
@@ -570,11 +554,11 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
                   end
                 end
               else
-                print ('Receive error = ', rip)
+                log.error ('Receive error = ', rip)
               end
             end
           else
-            print ('No sockets ready; error = ', err)
+            log.warn (string.format('No sockets ready; time left=%f', time_remaining))
           end
         else
           break
@@ -654,7 +638,6 @@ end
 local function scan(name, rrtype, listen_time)
 
   --print ('scan input:', name, rrtype, listen_time)
-
   if name and rrtype and listen_time then
 
     local collection = collect(name, rrtype, listen_time, false)
@@ -667,6 +650,13 @@ local function scan(name, rrtype, listen_time)
   else
     log.warn ('Missing parameter(s) for scan()')
   end
+end
+
+
+local function get_service_types()
+
+  return (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
+
 end
 
 
@@ -689,7 +679,6 @@ end
 local function get_ip(instancename)
 
   if instancename then
-
     local records = collect(instancename, dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
@@ -707,9 +696,9 @@ end
 
 local function get_address(instancename, class)
 
-  local ip, port
-  
   if instancename and class then
+    local ip, port
+    
     -- First try PTR requests, as it may have both IP and port
     
     --print ('PTR Request')
@@ -765,6 +754,7 @@ end
 
 return  {
           scan = scan,
+          get_service_types = get_service_types,
           get_services = get_services,
           get_address = get_address,
           get_ip = get_ip,
