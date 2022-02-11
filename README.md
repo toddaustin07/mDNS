@@ -46,7 +46,7 @@ Returns table of all available instances for the given service type
 Returns IP address if found
   
   
-**get:address**([<*instance_name*> | <*hostname*>], <*service_type*>)
+**get_address**([<*instance_name*> | <*hostname*>], <*service_type*>)
 
 - instance_name - typically in the form *instancename*.local 
 - hostname - typically in the form *hostname*.local   (note that *hostname* may also be included in the table returned from **get_services**) 
