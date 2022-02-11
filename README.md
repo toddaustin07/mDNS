@@ -1,7 +1,7 @@
 # mDNS
 A Lua library for discovering devices (services) and their address via Multicast DNS.
 
-This is intended to be a robust implementation, designed to be able to read and parse all valid DNS response records.  Unlike other 'minimalist' implementations available, this library is intended to follow strict adherance to published specifications and be able to handle all valid mDNS responses (types: A, PTR, SRV, TXT).
+This is intended to be a robust implementation, designed to be able to read and parse all valid DNS response records.  Unlike other 'minimalist' implementations available, this library is intended to follow strict adherance to published specifications and be able to handle all valid mDNS responses (types: A, PTR, SRV, TXT).  The library's robustness is also due to its extensive error capture and message logging.
 
 In its current form, this library provides what is considered a 'one-shot query' capability.  The library itself does not monitor the multicast continuously or maintain a cache of valid response records.  The library's *scan* API call could be used to mimic such an application today, however a full-function mDNS querier - which would include this capability for ongoing device/service presence monitoring - is being considered as a future expansion of this project.
 
