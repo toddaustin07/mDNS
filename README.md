@@ -12,8 +12,9 @@ The code has now been ported to be used in a SmartThings Edge driver.
 Create a subdirectory in the src directory of the driver hub package called '**mDNS**' and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
 ## API
-A work in progress, but currently supports the APIs below
-Note that the SmartThings Edge version now implements callbacks, which is assumed below
+A work in progress, but currently supports the APIs below.
+
+Note that the SmartThings Edge version now implements callbacks, which is assumed below.
 
 **query**(<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
 
