@@ -62,6 +62,10 @@ Returns IP address if found
 Returns IP and port number if found
 
 
+## Problems
+
+A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Or other networking configuration may need to be done to ensure the port is shared. 
+
 ## Update Log
 02/08/22 01:02    Handle spaces in names; add processing for Authority and Additional Information records
                   Next: improve collating of records
