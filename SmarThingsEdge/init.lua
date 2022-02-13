@@ -123,7 +123,7 @@ local function init_sockets()
 
   local rc, msg
 
-  ---[[
+  --[[
   -- Multicast socket
 
   local m = socket.udp()
@@ -158,8 +158,8 @@ local function init_sockets()
     return
   end
 
-  return m, u
-  --return u
+  --return m, u
+  return u
 
 end
 
@@ -211,6 +211,7 @@ local function dns_send(m, rrtype, name)
 end
 
 
+--[[
 local function get_label(nameptr, fullmsg)
   
   local len = string.unpack("> B", nameptr)
@@ -287,6 +288,93 @@ local function build_name_from_labels(data, fullmsg)
   return name, totalnamelen, suffixdata
 
 end
+--]]
+
+
+local function get_label(currlabel, fullmsg, compflag)
+  
+  local len = string.unpack("> B", currlabel)
+  if len then
+    if len > 0 then
+      if len >= 0xc0 then
+        local index = string.unpack("> I2", currlabel) - 0xc000
+        local newlen = fullmsg:sub(index+1):byte()
+        local _name = fullmsg:sub(index+2, index+1+newlen)
+        local retlen
+        if compflag == false then
+          retlen = 2
+        else
+          retlen = 0
+        end
+        return _name, retlen, fullmsg:sub(index+1+newlen+1), true, false
+      else
+        local retlen
+        if compflag == false then
+          retlen = len + 1
+        else
+          retlen = 0
+        end
+        return currlabel:sub(2, 2+len-1), retlen, currlabel:sub(len+2), compflag, false
+      end
+    else
+      return nil, nil, nil, compflag, true
+    end
+  else
+    log.error ('***Error: unexpected null string length')
+  end
+end
+
+
+local function build_name_from_labels(data, fullmsg)
+
+  local name
+  
+  local totalnamelen = 0
+  local nextlabel = data
+  local compflag = false
+  local endflag = false
+  
+  local _len = nextlabel:byte()
+  local _name
+  
+  while (endflag == false) do
+  
+    _name, _len, nextlabel, compflag, endflag = get_label(nextlabel, fullmsg, compflag)
+
+    --log.debug ('_name/_len:', _name, _len)
+
+    if endflag == false then
+
+      if name then
+        name = name .. '.' .. _name
+      else
+        name = _name
+      end
+      
+      totalnamelen = totalnamelen + _len
+      
+      --log.debug (string.format('\tNext Label length: 0x%02X', nextlabel:byte())) 
+      --log.debug (string.format('\tNext label: >%s<', nextlabel:sub(2, 40)))
+    
+    end
+    
+  end
+  
+  local suffixdata
+  
+  if compflag == false then
+    totalnamelen = totalnamelen + 1         -- account for null terminator
+  end  
+    
+  suffixdata = data:sub(totalnamelen+1)
+  
+  --log.debug ('Built name:', name, totalnamelen)
+  
+  return name, totalnamelen, suffixdata
+
+end
+
+
 
 local function parse_question(question, fullmsg)
 
@@ -441,9 +529,16 @@ local function process_response(msgdata)
           
             local domain = build_name_from_labels(section_record.rdata, msgdata)
             
+            local keyname
+            if section_record.name == '_services._dns-sd._udp.local' then
+              keyname = 'ServiceType'
+            else
+              keyname = 'Instance'
+            end
+            
             table.insert(record_table, 
                               { ['Name'] = section_record.name,
-                                ['Instance'] = domain,
+                                [keyname] = domain,
                                 ['RRtype'] = 'PTR',
                               })
             
@@ -505,7 +600,8 @@ end
 
 local function collect(name, rrtype, listen_time, queryflag, instancename)
 
-  m, u = init_sockets()
+  --m, u = init_sockets()
+  u = init_sockets()
   
   if u then
   
@@ -598,13 +694,13 @@ local function collate(collection)
       for key, value in pairs(records) do
         if key == 'Name' then
         
-          if value:find('in-addr.arpa', 1, 'plaintext') then
+          if value:find('in-addr.arpa', 1, 'plaintext') or (value:sub(1,1) == '_') then
             name = value
           else
             name = value:match('^([^%.]+)%.')
-          end
-          if not name then
-            name = value
+            if not name then
+              name = value
+            end
           end
           
           if not collated[name] then
@@ -620,6 +716,8 @@ local function collate(collection)
           collated[name].port = value
         elseif key == 'Instance' then
           consolidate(collated[name], 'instances', value)
+        elseif key == 'ServiceType' then
+          consolidate(collated[name], 'servicetypes', value)
         elseif key == 'Hostname' then
           consolidate(collated[name], 'hostnames', value)
         elseif key == 'Info' then
@@ -637,7 +735,6 @@ end
 
 local function scan(name, rrtype, listen_time)
 
-  --print ('scan input:', name, rrtype, listen_time)
   if name and rrtype and listen_time then
 
     local collection = collect(name, rrtype, listen_time, false)
@@ -701,7 +798,6 @@ local function get_address(instancename, class)
     
     -- First try PTR requests, as it may have both IP and port
     
-    --print ('PTR Request')
     records = collect(class, dnsRRType_PTR, 2, true, instancename)
     if records then
       for i = 1, #records do
@@ -718,9 +814,9 @@ local function get_address(instancename, class)
         return ip, port
       end
     end
+
     -- Try getting IP and port separately
     
-    --print ('A Request')
     local records = collect(instancename, dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
@@ -733,7 +829,6 @@ local function get_address(instancename, class)
       
       socket.sleep(.1)
       
-      --print ('SRV Request')
       records = collect(class, dnsRRType_SRV, 2, true, instancename)
       if records then
         for i = 1, #records do

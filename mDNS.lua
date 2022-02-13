@@ -209,21 +209,33 @@ local function dns_send(m, rrtype, name)
 end
 
 
-local function get_label(nameptr, fullmsg)
+local function get_label(currlabel, fullmsg, compflag)
   
-  local len = string.unpack("> B", nameptr)
+  local len = string.unpack("> B", currlabel)
   if len then
     if len > 0 then
       if len >= 0xc0 then
-        local index = string.unpack("> I2", nameptr) - 0xc000
+        local index = string.unpack("> I2", currlabel) - 0xc000
         local newlen = fullmsg:sub(index+1):byte()
         local _name = fullmsg:sub(index+2, index+1+newlen)
-        return _name, 2, true
+        local retlen
+        if compflag == false then
+          retlen = 2
+        else
+          retlen = 0
+        end
+        return _name, retlen, fullmsg:sub(index+1+newlen+1), true, false
       else
-        return nameptr:sub(2, 2+len-1), len + 1, false
+        local retlen
+        if compflag == false then
+          retlen = len + 1
+        else
+          retlen = 0
+        end
+        return currlabel:sub(2, 2+len-1), retlen, currlabel:sub(len+2), compflag, false
       end
     else
-      return _, len, false
+      return nil, nil, nil, compflag, true
     end
   else
     print ('***Error: unexpected null string length')
@@ -233,54 +245,49 @@ end
 
 local function build_name_from_labels(data, fullmsg)
 
-  local name = nil
+  local name
   
   local totalnamelen = 0
-  local nxtlblidx = 1
-  
-  local _len = data:byte()
-  local _name
+  local nextlabel = data
+  local compflag = false
   local endflag = false
   
-  while (_len > 0) and (not endflag) do
+  local _len = nextlabel:byte()
+  local _name
   
-    _name, _len, endflag = get_label(data:sub(nxtlblidx), fullmsg)
-    --print ('_name/_len:', _name, _len, endflag)
-    if _len then
-      if _len > 0 then
-        if name then
-          name = name .. '.' .. _name
-        else
-          name = _name
-        end
-        totalnamelen = totalnamelen + _len
-         
-        if not endflag then
-          --print ('Current label:', data:sub(nxtlblidx+1, nxtlblidx+40))
-          
-          nxtlblidx = nxtlblidx + _len
-          --print (string.format('Next label: >%s<', data:sub(nxtlblidx+1, nxtlblidx+40)))
-          --print (string.format('\t%02X', data:sub(nxtlblidx):byte()))
-        end
+  while (endflag == false) do
+  
+    _name, _len, nextlabel, compflag, endflag = get_label(nextlabel, fullmsg, compflag)
+
+    print ('_name/_len:', _name, _len)
+
+    if endflag == false then
+
+      if name then
+        name = name .. '.' .. _name
+      else
+        name = _name
       end
-    else
-      print ('***Error: no string length found')
+      
+      totalnamelen = totalnamelen + _len
+      
+      --print (string.format('\tNext Label length: 0x%02X', nextlabel:byte())) 
+      --print (string.format('\tNext label: >%s<', nextlabel:sub(2, 40)))
+    
     end
+    
   end
   
   local suffixdata
   
-  if _len == 0 then
+  if compflag == false then
     totalnamelen = totalnamelen + 1         -- account for null terminator
-    suffixdata = data:sub(nxtlblidx+1)
-  elseif endflag then
-    suffixdata = data:sub(nxtlblidx+2)
-  else
-    suffixdata = data:sub(nxtlblidx)        -- this shouldn't happen
-    print ('***UNEXPECTED ERROR: ~0 len & endflag false') 
-  end
+  end  
+    
+  suffixdata = data:sub(totalnamelen+1)
   
   print ('built name:', name, totalnamelen)
+  print ('- - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
   
   return name, totalnamelen, suffixdata
 
@@ -316,6 +323,8 @@ local function parse_section(section, fullmsg)
       ttl,             
       length
     = string.unpack("> I2 I2 I4 I2", suffix_data)
+  
+  --print (name, rrtype, class, ttl, rdlength, rdata, recordlen)
   
   -- Return object table
   return  {
@@ -417,7 +426,7 @@ local function process_response(msgdata)
         local record_table = {}
         
         for item = 1, sectioncount do
-
+          
           local section_record  = parse_section(next_section, msgdata)
           
           if section_record.type == dnsRRType_A then
@@ -433,15 +442,23 @@ local function process_response(msgdata)
                                 ['IP'] = address,
                                 ['RRtype'] = 'A',
                               })
+              print ('Address found = ', address)
             end
             
           elseif section_record.type == dnsRRType_PTR then
           
             local domain = build_name_from_labels(section_record.rdata, msgdata)
+
+            local keyname
+            if section_record.name == '_services._dns-sd._udp.local' then
+              keyname = 'ServiceType'
+            else
+              keyname = 'Instance'
+            end
             
             table.insert(record_table, 
                               { ['Name'] = section_record.name,
-                                ['Instance'] = domain,
+                                [keyname] = domain,
                                 ['RRtype'] = 'PTR',
                               })
             
@@ -607,6 +624,7 @@ end
 local function collate(collection)
   
   local collated = {}
+  local name
   
   for _, group in ipairs(collection) do
     for _, records in ipairs(group) do
@@ -614,13 +632,13 @@ local function collate(collection)
       for key, value in pairs(records) do
         if key == 'Name' then
         
-          if value:find('in-addr.arpa', 1, 'plaintext') then
+          if value:find('in-addr.arpa', 1, 'plaintext') or (value:sub(1,1) == '_') then
             name = value
           else
             name = value:match('^([^%.]+)%.')
-          end
-          if not name then
-            name = value
+            if not name then
+              name = value
+            end
           end
           
           if not collated[name] then
@@ -636,6 +654,8 @@ local function collate(collection)
           collated[name].port = value
         elseif key == 'Instance' then
           consolidate(collated[name], 'instances', value)
+        elseif key == 'ServiceType' then
+          consolidate(collated[name], 'servicetypes', value)
         elseif key == 'Hostname' then
           consolidate(collated[name], 'hostnames', value)
         elseif key == 'Info' then
