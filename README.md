@@ -48,7 +48,7 @@ Returns table of all available instances for the given service type.  Most devic
 ### get_ip (<*instance_name*> | <*hostname*>, <*callback*>)
 
 - *instance_name* - typically in the form *instancename*.local 
-- *hostname* - typically in the form *hostname*.local   (note that *hostname* may also be included in the table returned from **get_services**) 
+- *hostname* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services**) 
 - *callback* - function called upon successful execution, with return data as below
 
 Returns IP address if found
