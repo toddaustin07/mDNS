@@ -62,7 +62,7 @@ Returns IP address if found
 Returns IP and port number if found
 
 
-### Update Log
+## Update Log
 02/08/22 01:02    Handle spaces in names; add processing for Authority and Additional Information records
                   Next: improve collating of records
 
