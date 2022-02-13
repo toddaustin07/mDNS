@@ -68,8 +68,7 @@ Returns IP and port number if found
 
 02/12/22 18:80    Fix to compressed labels handling; enhanced collate to specify servicetypes lists
   
-02/13/22 15:45    Changed 'scan' API to 'query'
-                  SmartThings Edge version: changed APIs to implement callbacks
+02/13/22 15:45    Changed 'scan' API to 'query'; SmartThings Edge version: changed APIs to implement callbacks & re-enabled multicast responses to expand results
 
 ### Next Updates to be made
 - tbd based on further testing
