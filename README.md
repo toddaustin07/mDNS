@@ -30,7 +30,7 @@ Returns table of discovered devices and their data (can include name, alternativ
  
 ### get_service_types (<*callback*>)
 
-No parameters required.
+- *callback* - function called upon successful execution, with return data as below
 
 Returns table of all available service types 
  
