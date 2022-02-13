@@ -259,7 +259,7 @@ local function build_name_from_labels(data, fullmsg)
   
     _name, _len, nextlabel, compflag, endflag = get_label(nextlabel, fullmsg, compflag)
 
-    print ('_name/_len:', _name, _len)
+    --print ('_name/_len:', _name, _len)
 
     if endflag == false then
 
@@ -286,8 +286,8 @@ local function build_name_from_labels(data, fullmsg)
     
   suffixdata = data:sub(totalnamelen+1)
   
-  print ('built name:', name, totalnamelen)
-  print ('- - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
+  --print ('built name:', name, totalnamelen)
+  --print ('- - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
   
   return name, totalnamelen, suffixdata
 
@@ -442,7 +442,6 @@ local function process_response(msgdata)
                                 ['IP'] = address,
                                 ['RRtype'] = 'A',
                               })
-              print ('Address found = ', address)
             end
             
           elseif section_record.type == dnsRRType_PTR then
@@ -539,7 +538,7 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
 
   m, u = init_sockets()
   
-  if u then
+  if m and u then
   
     if dns_send(u, rrtype, name) then
     
@@ -550,7 +549,7 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
       
       while true do
         local time_remaining = math.max(0, timeouttime-socket.gettime())
-        local readysocks, err = socket.select({u}, {}, time_remaining) 
+        local readysocks, err = socket.select({u, m}, {}, time_remaining) 
         
         if time_remaining > 0 then
           if readysocks then
@@ -560,9 +559,14 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
               local response_data, rip, _ = sock:receivefrom()
               
               if response_data then
-              
-                print (string.format('Received response from %s:', rip))
-                print (hex_dump(response_data))
+
+                if sock == m then
+                  print (string.format('Multicast response received from %s', rip))
+                else
+                  print (string.format('Unicast response received from %s', rip))
+                end
+                --print (string.format('Received response from %s:', rip))
+                --print (hex_dump(response_data))
                 
                 local records = process_response(response_data)
                 
@@ -621,17 +625,22 @@ local function consolidate(rrtable, key, value)
 
 end
 
-local function collate(collection)
+local function collate(target, collection)
   
   local collated = {}
   local name
+  
+  --local target_name = target:match('^([^%.]+)%.')
+  --local _type, _proto = target:match('(_[^%.]+).(_[^%.]+)')
+  --local target_type = _type .. '.' .. _proto 
   
   for _, group in ipairs(collection) do
     for _, records in ipairs(group) do
       local instance
       for key, value in pairs(records) do
         if key == 'Name' then
-        
+
+          --[[
           if value:find('in-addr.arpa', 1, 'plaintext') or (value:sub(1,1) == '_') then
             name = value
           else
@@ -640,26 +649,45 @@ local function collate(collection)
               name = value
             end
           end
-          
+          --]]
+
+          ---[[
+          name = value
           if not collated[name] then
             collated[name] = {}
           end
+          --]]
+          
+          --[[
+          name = value
+          if value:find(target_name, 1, 'plaintext') or value:find(target_type, 1, 'plaintext') then
+            if not collated[name] then
+              collated[name] = {}
+            end
+          else
+            print ('Name not target:', name)
+            name = nil
+          end
+          --]]
         end
       end
           
-      for key, value in pairs(records) do
-        if key == 'IP' then
-          collated[name].ip = value
-        elseif key == 'Port' then
-          collated[name].port = value
-        elseif key == 'Instance' then
-          consolidate(collated[name], 'instances', value)
-        elseif key == 'ServiceType' then
-          consolidate(collated[name], 'servicetypes', value)
-        elseif key == 'Hostname' then
-          consolidate(collated[name], 'hostnames', value)
-        elseif key == 'Info' then
-          collated[name].info = value
+          
+      if name then
+        for key, value in pairs(records) do
+          if key == 'IP' then
+            collated[name].ip = value
+          elseif key == 'Port' then
+            collated[name].port = value
+          elseif key == 'Instance' then
+            consolidate(collated[name], 'instances', value)
+          elseif key == 'ServiceType' then
+            consolidate(collated[name], 'servicetypes', value)
+          elseif key == 'Hostname' then
+            consolidate(collated[name], 'hostnames', value)
+          elseif key == 'Info' then
+            collated[name].info = value
+          end
         end
       end
       
@@ -681,7 +709,7 @@ local function scan(name, rrtype, listen_time)
     
     if collection then
     
-      return (collate(collection))
+      return (collate(name, collection))
       
     end
   else
@@ -694,11 +722,11 @@ local function get_services(servtype)
 
   if servtype then
 
-    local collection = collect(servtype, dnsRRType_PTR, 2, false)
+    local collection = collect(servtype, dnsRRType_PTR, 1.5, false)
     
     if collection then
     
-      return (collate(collection))
+      return (collate(servtype, collection))
       
     end
   else
@@ -725,15 +753,27 @@ local function get_ip(instancename)
   end
 end
 
-local function get_address(instancename, class)
+local function get_address(domainname)
 
-  local ip, port
+  if domainname then
   
-  if instancename and class then
+    local ip, port
+    
+    local instancename = domainname:match('^([^%.]+)%.')
+    if not instancename then
+      print ('Invalid domainname')
+      return
+    end
+    local class = '_' .. domainname:match('_(.+)')
+    if not class then
+      print ('Service type not found')
+      return
+    end
+  
     -- First try PTR requests, as it may have both IP and port
     
     --print ('PTR Request')
-    records = collect(class, dnsRRType_PTR, 2, true, instancename)
+    records = collect(class, dnsRRType_PTR, 1.5, true, instancename)
     if records then
       for i = 1, #records do
         for key, value in pairs(records[i]) do
@@ -751,8 +791,25 @@ local function get_address(instancename, class)
     end
     -- Try getting IP and port separately
     
-    --print ('A Request')
-    local records = collect(instancename, dnsRRType_A, 1, true)
+    -- Step 1: Try an SRV request, as its returned hostname may be needed to get IP
+      local hostname
+      records = collect(domainname, dnsRRType_SRV, 1, true)
+      if records then
+        for i = 1, #records do
+          for key, value in pairs(records[i]) do
+            if key == 'Port' then
+              port = value
+            elseif key == 'Hostname' then
+              hostname = value
+            end
+          end
+        end
+      end
+    
+    socket.sleep(.1)
+    
+    -- Step 2: Try an IP ('A') Request
+    local records = collect(instancename .. '.local', dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
         for key, value in pairs(records[i]) do
@@ -761,25 +818,25 @@ local function get_address(instancename, class)
           end
         end
       end
-      
-      socket.sleep(.1)
-      
-      --print ('SRV Request')
-      records = collect(class, dnsRRType_SRV, 2, true, instancename)
-      if records then
-        for i = 1, #records do
-          for key, value in pairs(records[i]) do
-            if key == 'Port' then
-              port = value
+
+      if ip and port then
+        return ip, port
+      else
+        local records = collect(hostname, dnsRRType_A, 1, true)
+        if records then
+          for i = 1, #records do
+            for key, value in pairs(records[i]) do
+              if key == 'IP' then
+                ip = value
+              end
             end
           end
         end
+        return ip, port
       end
-      
-      return ip, port
     end
   else
-    log.warn ('Missing instance, class for get_address()')
+    log.warn ('Missing domanin name for get_address()')
   end
 end
 
