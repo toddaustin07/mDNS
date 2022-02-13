@@ -717,6 +717,11 @@ local function scan(name, rrtype, listen_time)
   end
 end
 
+local function query(name, rrtype, listen_time)
+
+  return (scan(name, rrtype, listen_time))
+
+end
 
 local function get_services(servtype)
 
@@ -841,7 +846,7 @@ local function get_address(domainname)
 end
 
 return  {
-          scan = scan,
+          query = query,
           get_services = get_services,
           get_address = get_address,
           get_ip = get_ip,
