@@ -1,14 +1,15 @@
 # mDNS
 A Lua library for discovering devices (services) and their address via Multicast DNS.
 
-This is intended to be a robust implementation, designed to be able to read and parse all valid DNS response records.  Unlike other 'minimalist' implementations available, this library is intended to follow strict adherance to published specifications and be able to handle all valid mDNS responses (types: A, PTR, SRV, TXT).  The library's robustness is also due to its extensive error capture and message logging.
-
 In its current form, this library provides what is considered a 'one-shot query' capability.  The library itself does not monitor the multicast continuously or maintain a cache of valid response records.  The library's *scan* API call could be used to mimic such an application today, however a full-function mDNS querier - which would include this capability for ongoing device/service presence monitoring - is being considered as a future expansion of this project.
 
 The API is intended to be simple to use and not require deep understanding of the mDNS protocol.  Much of the behind-the-scenes DNS gorp is hidden and responses are provided in collated Lua tables for ease of parsing.  For those knowledgeable and wanting more direct control, one of the API calls available provides a more detailed and perscriptive way to define the desired query.
 
 ## SmartThings Edge
-The code has now been ported to be used in a SmartThings Edge driver.  Simply create a subdirectory in the src directory of the driver hub package called '**mDNS**' and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
+The code has now been ported to be used in a SmartThings Edge driver.  
+
+### Usage in a SmartThings Edge driver
+Create a subdirectory in the src directory of the driver hub package called '**mDNS**' and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
 ## API
 A work in progress, but currently supports the following APIs:
@@ -35,10 +36,10 @@ Returns table of all available service types
 
 - service_type - typically in the form \_xxxxx.\_tcp.local
 
-Returns table of all available instances for the given service type
+Returns table of all available instances for the given service type.  Most devices will also return whatever info is available including ip address, hostnames, port number, and info table.
  
  
-**get_ip**([<*instance_name*> | <*hostname*>])
+**get_ip**(<*instance_name*> | <*hostname*>)
 
 - instance_name - typically in the form *instancename*.local 
 - hostname - typically in the form *hostname*.local   (note that *hostname* may also be included in the table returned from **get_services**) 
@@ -61,6 +62,8 @@ Returns IP and port number if found
 
 02/10/22 22:50    Numerous updates and reworking of API; addition of SmartThings Edge version
 
+02/12/22 18:80    Fix to compressed labels handling; enhanced collate to specify servicetypes lists
 
-## Future additions
-I may add a monitoring function for maintaining ongoing status on device presence, and notifications for new services
+### Next Updates to be made
+- convert APIs to use callbacks rather than directly returned values
+
