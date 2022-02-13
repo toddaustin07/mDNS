@@ -16,7 +16,7 @@ A work in progress, but currently supports the APIs below.
 
 Note that the SmartThings Edge version now implements callbacks, which is assumed below.
 
-**query**(<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
+### query (<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
 
 (For the mDNS expert who wants more specific control)
 
@@ -28,14 +28,14 @@ Note that the SmartThings Edge version now implements callbacks, which is assume
 Returns table of discovered devices and their data (can include name, alternative domain names, IP address, port, device info; depends on record type returned)
   
  
-**get_service_types**(<*callback*>)
+### get_service_types (<*callback*>)
 
 No parameters required.
 
 Returns table of all available service types 
  
  
-**get_services**(<*service_type*>, <*callback*>)
+### get_services (<*service_type*>, <*callback*>)
 
 - *service_type* - typically in the form \_xxxxx.\_tcp.local
 - *callback* - function called upon successful execution, with return data as below
@@ -43,7 +43,7 @@ Returns table of all available service types
 Returns table of all available instances for the given service type.  Most devices will also return whatever info is available including ip address, hostnames, port number, and info table.
  
  
-**get_ip**(<*instance_name*> | <*hostname*>, <*callback*>)
+### get_ip (<*instance_name*> | <*hostname*>, <*callback*>)
 
 - *instance_name* - typically in the form *instancename*.local 
 - *hostname* - typically in the form *hostname*.local   (note that *hostname* may also be included in the table returned from **get_services**) 
@@ -52,7 +52,7 @@ Returns table of all available instances for the given service type.  Most devic
 Returns IP address if found
   
   
-**get_address**(<*domain_name*>, <*callback*>)
+### get_address (<*domain_name*>, <*callback*>)
 
 - *domain_name* - a *fully qualified* domain name; must be <instance name>.<service type>.local, e.g. 'Philips Hue - 1A2F3B._hue._tcp.local'
 - *callback* - function called upon successful execution, with return data as below
