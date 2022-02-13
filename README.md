@@ -54,7 +54,7 @@ Returns IP address if found
   
 ### get_address (<*domain_name*>, <*callback*>)
 
-- *domain_name* - a *fully qualified* domain name; must be <instance name>.<service type>.local, e.g. 'Philips Hue - 1A2F3B._hue._tcp.local'
+- *domain_name* - a *fully qualified* domain name; must be \<instance name\>.\<service type\>.local, e.g. 'Philips Hue - 1A2F3B.\_hue.\_tcp.local'
 - *callback* - function called upon successful execution, with return data as below
 
 Returns IP and port number if found
