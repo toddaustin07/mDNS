@@ -456,6 +456,8 @@ local function process_response(msgdata)
               keyname = 'Instance'
             end
             
+            log.debug (string.format('PTR record: %s / %s', section_record.name, domain))
+            
             table.insert(record_table, 
                               { ['Name'] = section_record.name,
                                 [keyname] = domain,
@@ -534,7 +536,9 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
       
       while true do
         local time_remaining = math.max(0, timeouttime-socket.gettime())
-        local readysocks, err = socket.select({u, m}, {}, time_remaining) 
+        local readysocks, err = socket.select({u, m}, {}, time_remaining)
+        
+        time_remaining = math.max(0, timeouttime-socket.gettime())
         
         if time_remaining > 0 then
           if readysocks then
@@ -585,11 +589,11 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
           break
         end
       end
-       m:close()
+      m:close()
       u:close()
       return return_object
     end
-     m:close()
+    m:close()
     u:close()
   end
 end

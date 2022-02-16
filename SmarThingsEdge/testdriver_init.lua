@@ -63,14 +63,26 @@ local function build_html(list)
   local html_list = ''
 
   for _, item in ipairs(list) do
-    html_list = html_list .. '<H6 style="margin:0">' .. item .. '</H6>\n'
+    html_list = html_list .. '<tr><td>' .. item .. '</td></tr>\n'
   end
 
   local html =  {
                   '<!DOCTYPE html>\n',
                   '<HTML>\n',
+                  '<HEAD>\n',
+                  '<style>\n',
+                  'table, td {\n',
+                  '  border: 1px solid black;\n',
+                  '  border-collapse: collapse;\n',
+                  '  font-size: 11px;\n',
+                  '  padding: 3px;\n',
+                  '}\n',
+                  '</style>\n',
+                  '</HEAD>\n',
                   '<BODY>\n',
+                  '<table>\n',
                   html_list,
+                  '</table>\n',
                   '</BODY>\n',
                   '</HTML>\n'
                 }
@@ -128,7 +140,7 @@ local function handle_selection(driver, device, command)
     
     
     mDNS.get_ip(name, function(ip)
-                        device:emit_event(cap_response.response(string.format('%s',ip)))
+                        device:emit_event(cap_response.response(ip))
                       end
                )
   
@@ -137,7 +149,7 @@ local function handle_selection(driver, device, command)
     log.debug (string.format('Address Request for name=>%s<', domain))
     
     mDNS.get_address(domain, function(ip, port)
-                               device:emit_event(cap_response.response(string.format('%s:%s',ip,port)))
+                               device:emit_event(cap_response.response(string.format('%s:%s',ip,port) ))
                              end
                     )
     
