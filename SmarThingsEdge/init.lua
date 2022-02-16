@@ -123,7 +123,7 @@ local function init_sockets()
 
   local rc, msg
 
-  --[[
+  ---[[
   -- Multicast socket
 
   local m = socket.udp()
@@ -158,8 +158,8 @@ local function init_sockets()
     return
   end
 
-  --return m, u
-  return u
+  return m, u
+  --return u
 
 end
 
@@ -176,7 +176,7 @@ local function make_labels(name)
 
 end
 
-local function dns_send(m, rrtype, name)
+local function dns_send(sock, rrtype, name)
 
   local labels = make_labels(name)
 
@@ -200,7 +200,7 @@ local function dns_send(m, rrtype, name)
   --print (hex_dump(question))
   
   local rc, msg
-  rc, msg = m:sendto(question, mdnsADDRESS, mdnsPORT)
+  rc, msg = sock:sendto(question, mdnsADDRESS, mdnsPORT)
   if not rc then
     log.error ('Send error:', msg)
     return
@@ -209,86 +209,6 @@ local function dns_send(m, rrtype, name)
   end
 
 end
-
-
---[[
-local function get_label(nameptr, fullmsg)
-  
-  local len = string.unpack("> B", nameptr)
-  if len then
-    if len > 0 then
-      if len >= 0xc0 then
-        local index = string.unpack("> I2", nameptr) - 0xc000
-        local newlen = fullmsg:sub(index+1):byte()
-        local _name = fullmsg:sub(index+2, index+1+newlen)
-        return _name, 2, true
-      else
-        return nameptr:sub(2, 2+len-1), len + 1, false
-      end
-    else
-      return _, len, false
-    end
-  else
-    log.error ('***Error: unexpected null string length')
-  end
-end
-
-
-local function build_name_from_labels(data, fullmsg)
-
-  local name = nil
-  
-  local totalnamelen = 0
-  local nxtlblidx = 1
-  
-  local _len = data:byte()
-  local _name
-  local endflag = false
-  
-  while (_len > 0) and (not endflag) do
-  
-    _name, _len, endflag = get_label(data:sub(nxtlblidx), fullmsg)
-    --print ('_name/_len:', _name, _len, endflag)
-    if _len then
-      if _len > 0 then
-        if name then
-          name = name .. '.' .. _name
-        else
-          name = _name
-        end
-        totalnamelen = totalnamelen + _len
-         
-        if not endflag then
-          --print ('Current label:', data:sub(nxtlblidx+1, nxtlblidx+40))
-          
-          nxtlblidx = nxtlblidx + _len
-          --print (string.format('Next label: >%s<', data:sub(nxtlblidx+1, nxtlblidx+40)))
-          --print (string.format('\t%02X', data:sub(nxtlblidx):byte()))
-        end
-      end
-    else
-      log.error ('***Error: no string length found')
-    end
-  end
-  
-  local suffixdata
-  
-  if _len == 0 then
-    totalnamelen = totalnamelen + 1         -- account for null terminator
-    suffixdata = data:sub(nxtlblidx+1)
-  elseif endflag then
-    suffixdata = data:sub(nxtlblidx+2)
-  else
-    suffixdata = data:sub(nxtlblidx)        -- this shouldn't happen
-    log.error ('***UNEXPECTED ERROR: ~0 len & endflag false') 
-  end
-  
-  log.debug ('built name:', name, totalnamelen)
-  
-  return name, totalnamelen, suffixdata
-
-end
---]]
 
 
 local function get_label(currlabel, fullmsg, compflag)
@@ -600,8 +520,8 @@ end
 
 local function collect(name, rrtype, listen_time, queryflag, instancename)
 
-  --m, u = init_sockets()
-  u = init_sockets()
+  m, u = init_sockets()
+  --u = init_sockets()
   
   if u then
   
@@ -614,7 +534,7 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
       
       while true do
         local time_remaining = math.max(0, timeouttime-socket.gettime())
-        local readysocks, err = socket.select({u}, {}, time_remaining) 
+        local readysocks, err = socket.select({u, m}, {}, time_remaining) 
         
         if time_remaining > 0 then
           if readysocks then
@@ -625,6 +545,11 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
               
               if response_data then
               
+                if sock == m then
+                  log.debug (string.format('Multicast response received from %s', rip))
+                else
+                  log.debug (string.format('Unicast response received from %s', rip))
+                end
                 -- log.debug (string.format('Received response from %s:', rip))
                 -- log.debug (hex_dump(response_data))
                 
@@ -693,16 +618,7 @@ local function collate(collection)
       local instance
       for key, value in pairs(records) do
         if key == 'Name' then
-        
-          if value:find('in-addr.arpa', 1, 'plaintext') or (value:sub(1,1) == '_') then
-            name = value
-          else
-            name = value:match('^([^%.]+)%.')
-            if not name then
-              name = value
-            end
-          end
-          
+          name = value
           if not collated[name] then
             collated[name] = {}
           end
@@ -750,14 +666,21 @@ local function scan(name, rrtype, listen_time)
 end
 
 
-local function get_service_types()
+local function query(name, rrtype, listen_time, callback)
 
-  return (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
+  callback (scan(name, rrtype, listen_time))
 
 end
 
 
-local function get_services(servtype)
+local function get_service_types(callback)
+
+  callback (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
+
+end
+
+
+local function get_services(servtype, callback)
 
   if servtype then
 
@@ -765,7 +688,7 @@ local function get_services(servtype)
     
     if collection then
     
-      return (collate(collection))
+      callback (collate(collection))
       
     end
   else
@@ -773,7 +696,7 @@ local function get_services(servtype)
   end
 end
 
-local function get_ip(instancename)
+local function get_ip(instancename, callback)
 
   if instancename then
     local records = collect(instancename, dnsRRType_A, 1, true)
@@ -781,7 +704,7 @@ local function get_ip(instancename)
       for i = 1, #records do
         for key, value in pairs(records[i]) do
           if key == 'IP' then
-            return(value)
+            callback(value)
           end
         end
       end
@@ -791,14 +714,31 @@ local function get_ip(instancename)
   end
 end
 
-local function get_address(instancename, class)
+local function get_address(domainname, callback)
 
-  if instancename and class then
+  if domainname then
+  
     local ip, port
     
-    -- First try PTR requests, as it may have both IP and port
+    local instancename = domainname:match('^([^%.]+)%.')
+    if not instancename then
+      print ('Invalid domain name provided')
+      return
+    else
+      if instancename:sub(1,1) == '_' then
+        print ('Invalid domain name provided')
+        return
+      end
+    end
+    local class = '_' .. domainname:match('_(.+)')
+    if not class then
+      print ('Service type not found')
+      return
+    end
+  
+    -- First try PTR requests, as the response may have both IP and port
     
-    records = collect(class, dnsRRType_PTR, 2, true, instancename)
+    records = collect(class, dnsRRType_PTR, 1.5, true, instancename)
     if records then
       for i = 1, #records do
         for key, value in pairs(records[i]) do
@@ -811,13 +751,34 @@ local function get_address(instancename, class)
       end
       
       if ip and port then
-        return ip, port
+        callback (ip, port)
       end
     end
-
-    -- Try getting IP and port separately
     
-    local records = collect(instancename, dnsRRType_A, 1, true)
+    -- If IP & port not gotten from PTR query, try getting IP and port separately
+    
+    -- Step 1: Try an SRV request, as its returned hostname may be needed to get IP
+      local hostname
+      records = collect(domainname, dnsRRType_SRV, 1, true)
+      if records then
+        for i = 1, #records do
+          for key, value in pairs(records[i]) do
+            if key == 'Port' then
+              port = value
+            elseif key == 'Hostname' then
+              hostname = value
+            end
+          end
+        end
+      end
+    
+    if not hostname then
+      log.warn ('No hostname found for', domainname)
+    end
+    socket.sleep(.1)
+    
+    -- Step 2: Try an IP ('A') Request with <instancename>.local
+    local records = collect(instancename .. '.local', dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
         for key, value in pairs(records[i]) do
@@ -826,29 +787,33 @@ local function get_address(instancename, class)
           end
         end
       end
-      
-      socket.sleep(.1)
-      
-      records = collect(class, dnsRRType_SRV, 2, true, instancename)
-      if records then
-        for i = 1, #records do
-          for key, value in pairs(records[i]) do
-            if key == 'Port' then
-              port = value
+
+      if ip and port then
+        callback(ip, port)
+      else
+        if hostname then
+        -- Step 3: Try an IP ('A') Request with hostname from SRV record
+          local records = collect(hostname, dnsRRType_A, 1, true)
+          if records then
+            for i = 1, #records do
+              for key, value in pairs(records[i]) do
+                if key == 'IP' then
+                  ip = value
+                end
+              end
             end
           end
-        end
+        end  
+        callback(ip, port)
       end
-      
-      return ip, port
     end
   else
-    log.warn ('Missing instance, class for get_address()')
+    log.warn ('Missing domanin name for get_address()')
   end
 end
 
 return  {
-          scan = scan,
+          query = query,
           get_service_types = get_service_types,
           get_services = get_services,
           get_address = get_address,
