@@ -83,11 +83,11 @@ A common issue when trying to run code utilizing multicast addresses is getting 
 
 mDNS defines a way for services (including applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There five type of these records generally used by mDNS participants:
 
-PTR - provides instances of a particular service type
-SRV - provides additional servernames or hostnames, plus port number associated with the service
-TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
-A - provides an IPv4 address
-AAAAA - provides an IPv6 address
+- PTR - provides instances of a particular service type
+- SRV - provides additional servernames or hostnames, plus port number associated with the service
+- TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
+- A - provides an IPv4 address
+- AAAAA - provides an IPv6 address
 
 
 ### Service Types
@@ -101,17 +101,19 @@ And so some examples might be: \_http.\_tcp.local, \_printer.\_tcp.local, \_hue.
 mDNS uses a confusing array of 'names' to represent the various entities referenced in the records above.  Here is a bit of a cheatsheet:
 
 #### PTR Records
-Input:  use a service type; such as '\_http.\_tcp.local'
-Returns:  Fully qualified service instance names with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Input:  use a service type; such as '\_http.\_tcp.local'
+- Returns:  Fully qualified service instance names with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
   
 #### SRV Records
-  Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
-  Returns:  a 'hostnames' table with hostnames or server names in the form of \<hostname\>.local
+- Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Returns:  a 'hostnames' table with hostnames or server names in the form of \<hostname\>.local
   
 #### TXT Records
-  Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
+- Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
+- Returns: set of key/value pairs
   
 #### A records
-  Input: an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Input: an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
         * OR *
         a hostname or server name in the form of \<hostname\>.local (obtained from SRV record)
+- Returns: IPv4 address (no port number)
