@@ -27,7 +27,7 @@ Note that the SmartThings Edge version now implements callbacks, which is assume
 - *duration* - number of seconds to scan
 - *callback* - function called upon successful execution, with return data as below
 
-Returns table of discovered devices and their data (can include name, alternative domain names, IP address, port, device info; depends on record type returned)
+Returns table of discovered services and associated metadata (depends on record type returned, but can include name, alternative domain names, IP address, port, service info)
   
  
 ### get_service_types (<*callback*>)
@@ -45,10 +45,10 @@ Returns table of all available service types
 Returns table of all available instances for the given service type.  Most devices will also return whatever info is available including ip address, hostnames, port number, and info table.
  
  
-### get_ip (<*instance_name*> | <*hostname*>, <*callback*>)
+### get_ip (<*instance_name*> | <*host_name*>, <*callback*>)
 
 - *instance_name* - typically in the form *instancename*.local 
-- *hostname* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services**) 
+- *host_name* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services**) 
 - *callback* - function called upon successful execution, with return data as below
 
 Returns IP address if found
@@ -79,3 +79,39 @@ A common issue when trying to run code utilizing multicast addresses is getting 
 ### Next Updates to be made
 - tbd based on further testing
 
+## Quick mDNS Primer
+
+mDNS defines a way for services (including applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There five type of these records generally used by mDNS participants:
+
+PTR - provides instances of a particular service type
+SRV - provides additional servernames or hostnames, plus port number associated with the service
+TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
+A - provides an IPv4 address
+AAAAA - provides an IPv6 address
+
+
+### Service Types
+All service types must have the format:
+```
+_<typename>._<[tcp | upd]>.local
+```
+And so some examples might be: \_http.\_tcp.local, \_printer.\_tcp.local, \_hue.\_tcp.local
+
+### Service instance names, Domain names, Server names
+mDNS uses a confusing array of 'names' to represent the various entities referenced in the records above.  Here is a bit of a cheatsheet:
+
+#### PTR Records
+Input:  use a service type; such as '\_http.\_tcp.local'
+Returns:  Fully qualified service instance names with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+  
+#### SRV Records
+  Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
+  Returns:  a 'hostnames' table with hostnames or server names in the form of \<hostname\>.local
+  
+#### TXT Records
+  Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
+  
+#### A records
+  Input: an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+        * OR *
+        a hostname or server name in the form of \<hostname\>.local (obtained from SRV record)
