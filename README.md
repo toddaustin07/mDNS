@@ -86,19 +86,6 @@ If the developer wants to obtain the hostname themselves, this can be done using
 
 A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Or other networking configuration may need to be done to ensure the port is shared. 
 
-## Update Log
-02/08/22 01:02    Handle spaces in names; add processing for Authority and Additional Information records
-                  Next: improve collating of records
-
-02/10/22 22:50    Numerous updates and reworking of API; addition of SmartThings Edge version
-
-02/12/22 18:80    Fix to compressed labels handling; enhanced collate to specify servicetypes lists
-  
-02/13/22 15:45    Changed 'scan' API to 'query'; SmartThings Edge version: changed APIs to implement callbacks & re-enabled multicast responses to expand results
-
-### Next Updates to be made
-- tbd based on further testing
-
 ## Quick mDNS Primer
 
 mDNS defines a way for services (including applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
@@ -138,4 +125,14 @@ mDNS uses a confusing array of 'names' to represent the various entities referen
         a hostname or server name in the form of \<*hostname*\>.local (obtained from SRV record)
 - Returns: IPv4 address (no port number)
 
+## Update Log
+02/08/22 01:02    Handle spaces in names; add processing for Authority and Additional Information records
+                  Next: improve collating of records
 
+02/10/22 22:50    Numerous updates and reworking of API; addition of SmartThings Edge version
+
+02/12/22 18:80    Fix to compressed labels handling; enhanced collate to specify servicetypes lists
+  
+02/13/22 15:45    Changed 'scan' API to 'query'; SmartThings Edge version: changed APIs to implement callbacks & re-enabled multicast responses to expand results
+
+02/19/22 20:10    Documentation updates
