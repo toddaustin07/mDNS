@@ -35,9 +35,11 @@ local devcounter = 1
 local thisDriver
 local initialized = false
 local lastinfochange = socket.gettime()
+local response_records
 
 local cap_select = capabilities["partyvoice23922.mdnsselect"]
 local cap_input = capabilities["partyvoice23922.mdnsinput"]
+local cap_copy = capabilities["partyvoice23922.mdnscopy"]
 local cap_response = capabilities["partyvoice23922.mdnsresponse"]
 
 
@@ -62,8 +64,8 @@ local function build_html(list)
 
   local html_list = ''
 
-  for _, item in ipairs(list) do
-    html_list = html_list .. '<tr><td>' .. item .. '</td></tr>\n'
+  for itemnum, item in ipairs(list) do
+    html_list = html_list .. '<tr><td>' .. tostring(itemnum) .. '</td><td>' .. item .. '</td></tr>\n'
   end
 
   local html =  {
@@ -93,14 +95,23 @@ end
 
 local function parse_types(resptable)
 
-  return build_html(resptable['_services._dns-sd._udp.local'].servicetypes)
+  response_records = resptable['_services._dns-sd._udp.local'].servicetypes
+  return build_html(response_records)
 
 end
 
 
-local function parse_services(resptable, type)
+local function parse_services(resptable, srvtype)
 
-  return build_html(resptable[type].instances)
+  response_records = resptable[srvtype].instances
+  return build_html(response_records)
+
+end
+
+local function parse_hostnames(resptable, name)
+
+  response_records = resptable[name].hostnames
+  return build_html(response_records)
 
 end
 
@@ -133,15 +144,26 @@ local function handle_selection(driver, device, command)
                               device:emit_event(cap_response.response(parse_services(resptable, name)))
                             end
                      )
+                     
+  elseif command.args.value == 'hosts' then
+    local name = device.state_cache.main['partyvoice23922.mdnsinput'].input.value
+    log.debug (string.format('Hostnames Request for >>%s<<', name))
+    
+    mDNS.query(name, dnsRRType_SRV, 2, function(resptable)
+                                         device:emit_event(cap_response.response(parse_hostnames(resptable, name)))
+                                       end
+              )                   
+                    
     
   elseif command.args.value == 'getip' then
     local name = device.state_cache.main['partyvoice23922.mdnsinput'].input.value
-    log.debug (string.format('IP Request for >>%s<<', name))
+    local domain_name = name:match('^([^%.]+)%.') .. '.local'
+    log.debug (string.format('IP Request for >>%s<<', domain_name))
     
     
-    mDNS.get_ip(name, function(ip)
-                        device:emit_event(cap_response.response(ip))
-                      end
+    mDNS.get_ip(domain_name, function(ip)
+                               device:emit_event(cap_response.response(ip))
+                             end
                )
   
   elseif command.args.value == 'getaddr' then 
@@ -167,6 +189,23 @@ local function handle_input(_, device, command)
 end
 
 
+local function handle_copy(_, device, command)
+
+  log.debug ('Item # to copy', command.args.value)
+  
+  device:emit_event(cap_copy.selection(command.args.value))
+  device.thread:call_with_delay(2, function() device:emit_event(cap_copy.selection(" ")); end, 'clear item')
+  
+  local itemnum = tonumber(command.args.value:match('s(%d+)'))
+  log.debug ('itemnum / # of response_records', itemnum, #response_records)
+  
+  for index, record in ipairs(response_records) do
+    if index == itemnum then
+      device:emit_event(cap_input.input(record))
+    end
+  end
+
+end
 ------------------------------------------------------------------------
 --                REQUIRED EDGE DRIVER HANDLERS
 ------------------------------------------------------------------------
@@ -281,6 +320,9 @@ thisDriver = Driver("thisDriver", {
   
     [cap_select.ID] = {
       [cap_select.commands.setSelect.NAME] = handle_selection,
+    },
+    [cap_copy.ID] = {
+      [cap_copy.commands.setSelection.NAME] = handle_copy,
     },
     [cap_input.ID] = {
       [cap_input.commands.setInput.NAME] = handle_input,

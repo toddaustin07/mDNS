@@ -665,28 +665,36 @@ local function scan(name, rrtype, listen_time)
       
     end
   else
-    log.warn ('Missing parameter(s) for scan()')
+    log.error ('Missing parameter(s) for query() or scan()')
   end
 end
 
 
 local function query(name, rrtype, listen_time, callback)
 
-  callback (scan(name, rrtype, listen_time))
+  if callback then
+    callback (scan(name, rrtype, listen_time))
+  else
+    log.error ('Missing callback parameter for query()')
+  end
 
 end
 
 
 local function get_service_types(callback)
 
-  callback (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
+  if callback then
+    callback (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
+  else
+    log.error ('Missing callback parameter for get_service_types()')
+  end
 
 end
 
 
 local function get_services(servtype, callback)
 
-  if servtype then
+  if servtype and callback then
 
     local collection = collect(servtype, dnsRRType_PTR, 2, false)
     
@@ -696,13 +704,13 @@ local function get_services(servtype, callback)
       
     end
   else
-    log.warn ('Missing service name for get_services()')
+    log.error ('Missing parameters for get_services()')
   end
 end
 
 local function get_ip(instancename, callback)
 
-  if instancename then
+  if instancename and callback then
     local records = collect(instancename, dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
@@ -714,29 +722,29 @@ local function get_ip(instancename, callback)
       end
     end
   else
-    log.warn ('Missing instance name for get_ip()')
+    log.error ('Missing parameters for get_ip()')
   end
 end
 
 local function get_address(domainname, callback)
 
-  if domainname then
+  if domainname and callback then
   
     local ip, port
     
     local instancename = domainname:match('^([^%.]+)%.')
     if not instancename then
-      print ('Invalid domain name provided')
+      log.error ('Invalid domain name provided')
       return
     else
       if instancename:sub(1,1) == '_' then
-        print ('Invalid domain name provided')
+        log.error ('Invalid domain name provided')
         return
       end
     end
     local class = '_' .. domainname:match('_(.+)')
     if not class then
-      print ('Service type not found')
+      log.error ('Service type not found')
       return
     end
   
@@ -812,7 +820,7 @@ local function get_address(domainname, callback)
       end
     end
   else
-    log.warn ('Missing domanin name for get_address()')
+    log.error ('Missing parameters get_address()')
   end
 end
 
