@@ -122,20 +122,20 @@ mDNS uses a confusing array of 'names' to represent the various entities referen
 
 #### PTR Records
 - Input:  use a service type; such as '\_http.\_tcp.local'
-- Returns:  Fully qualified service instance names with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Returns:  Fully qualified service instance names with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
   
 #### SRV Records
-- Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
-- Returns:  a 'hostnames' table with hostnames or server names in the form of \<hostname\>.local
+- Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Returns:  a 'hostnames' table with hostnames or server names in the form of \<*hostname*\>.local
   
 #### TXT Records
-- Input: use an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
+- Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
 - Returns: set of key/value pairs
   
 #### A records
-- Input: an instance name with the form \<instancename\>.\<servicetype\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Input: an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
         * OR *
-        a hostname or server name in the form of \<hostname\>.local (obtained from SRV record)
+        a hostname or server name in the form of \<*hostname*\>.local (obtained from SRV record)
 - Returns: IPv4 address (no port number)
 
 
