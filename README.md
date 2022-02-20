@@ -88,7 +88,7 @@ A common issue when trying to run code utilizing multicast addresses is getting 
 
 ## Quick mDNS Primer
 
-mDNS defines a way for services (including applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
+mDNS defines a way for services (i.e. applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
 
 - PTR - provides instances of a particular service type
 - SRV - provides additional servernames or hostnames, plus port number associated with the service
