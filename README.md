@@ -18,7 +18,7 @@ A work in progress, but currently supports the APIs below.  There is really only
 
 Pay close attention to the guidance on what name formats are required for each wrapper API for the highest chance of success.  Using the wrong name format will typically result in no responses, or responses you don't want.
 
-All APIs are implemented with a callback parameter, so have no direct return value.  For the return table descriptions below, we will assume the table returned to the callback is called 'resptable'
+All APIs are implemented with a callback parameter, so have no direct return value.  For the return table descriptions below, we will assume the table returned to the callback is called '*resptable*'
 
 ### query (<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
 
