@@ -126,7 +126,7 @@ mDNS uses a confusing array of 'names' to represent the various entities referen
   
 #### SRV Records
 - Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
-- Returns:  a 'hostnames' table with hostnames or server names in the form of \<*hostname*\>.local
+- Returns:  a 'hostnames' table with hostnames or server names in the form of \<*hostname*\>.local; plus associated port number
   
 #### TXT Records
 - Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
