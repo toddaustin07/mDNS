@@ -14,7 +14,7 @@ The code has now been ported to be used in a SmartThings Edge driver.
 Create a subdirectory in the src directory of the driver hub package called '**mDNS**' and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
 ## API
-A work in progress, but currently supports the APIs below.  There is really only one core API: query().  The remaining APIs are wrappers that use this core API; their purpose is to simplify things and reduce the level of mDNS expertise needed to get productive use out of the library.
+A work in progress, but currently supports the APIs below.  There is really only one core API: query().  The remaining APIs are wrappers that use this core API under the covers; their purpose is to simplify things and reduce the level of mDNS expertise needed to get productive use out of the library.
 
 Pay close attention to the guidance on what name formats are required for each wrapper API for the highest chance of success.  Using the wrong name format will typically result in no responses, or responses you don't want.
 
