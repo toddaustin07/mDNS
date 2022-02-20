@@ -59,7 +59,7 @@ Returns IP address (string) if found
   
 ### get_address (<*domain_name*>, <*callback*>)
 
-- *domain_name* - a *fully qualified* domain name; must be \<instance name\>.\<service type\>.local, e.g. 'Philips Hue - 1A2F3B.\_hue.\_tcp.local'
+- *domain_name* - a *fully qualified* domain name; must be \<*instance_name*\>.\<*service_type*\.local>, e.g. 'Philips Hue - 1A2F3B.\_hue.\_tcp.local'
 - *callback* - function called upon successful execution, with return data as below
 
 Returns IP (string) and port number (number) if found
@@ -113,7 +113,7 @@ mDNS defines a way for services (including applications or devices) on a **local
 ### Service Types
 All service types must have the format:
 ```
-_<typename>._<[tcp | upd]>.local
+_<*typename*>._<[tcp | upd]>.local
 ```
 And so some examples might be: \_http.\_tcp.local, \_printer.\_tcp.local, \_hue.\_tcp.local
 
