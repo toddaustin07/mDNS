@@ -8,10 +8,9 @@ In its current form, this library provides what is considered a 'one-shot query'
 The API is intended to be simple to use and not require deep understanding of the mDNS protocol.  Much of the behind-the-scenes DNS gorp is hidden and responses are provided in collated Lua tables for ease of parsing.  For those knowledgeable and wanting more direct control, one of the API calls available provides a more detailed and perscriptive way to define the desired query.
 
 ## SmartThings Edge
-The code has now been ported to be used in a SmartThings Edge driver.  
+The code has developed for use by a SmartThings Edge driver which runs on a SmartThings hub.  However a version is also available that can be run on any computer with Lua 5.3 or later installed, along with the Lua sockets library.  It is quite useful to test various queries, see what reponses are received, and what data is returned.
 
-### Usage in a SmartThings Edge driver
-Create a subdirectory in the src directory of the driver hub package called '**mDNS**' and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
+To use this library in a SmartThings Edge driver, create a subdirectory called '**mDNS**' off of the src directory of the driver hub package, and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
 ## API
 A work in progress, but currently supports the APIs below.  There is really only one core API: query().  The remaining APIs are wrappers that use this core API under the covers; their purpose is to simplify things and reduce the level of mDNS expertise needed to get productive use out of the library.
