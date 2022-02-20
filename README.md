@@ -91,7 +91,7 @@ A common issue when trying to run code utilizing multicast addresses is getting 
 mDNS defines a way for services (i.e. applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
 
 - PTR - provides instances of a particular service type
-- SRV - provides additional servernames or hostnames, plus port number associated with the service
+- SRV - provides hostnames plus port numbers associated with the service
 - TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
 - A - provides an IPv4 address
 - AAAAA - provides an IPv6 address
