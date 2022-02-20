@@ -14,13 +14,15 @@ The code has now been ported to be used in a SmartThings Edge driver.
 Create a subdirectory in the src directory of the driver hub package called '**mDNS**' and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
 ## API
-A work in progress, but currently supports the APIs below.
+A work in progress, but currently supports the APIs below.  There is really only one core API: query().  The remaining APIs are wrappers that use this core API; their purpose is to simplify things and reduce the level of mDNS expertise needed to get productive use out of the library.
 
-Note that the SmartThings Edge version now implements callbacks, which is assumed below.
+Pay close attention to the guidance on what name formats are required for each wrapper API for the highest chance of success.  Using the wrong name format will typically result in no responses, or responses you don't want.
+
+All APIs are implemented with a callback parameter, so have no direct return value.  For the return table descriptions below, we will assume the table returned to the callback is called 'resptable'
 
 ### query (<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
 
-(For the mDNS expert who wants more specific control)
+(For the mDNS-knowledgeable who want more specific control)
 
 - *domain_name* - valid DNS name depending query type
 - *type* - requested DNS response record type (1=A, 12=PTR, 16=TXT, 33=SRV, 255=ANY)
@@ -34,15 +36,16 @@ Returns table of discovered services and associated metadata (depends on record 
 
 - *callback* - function called upon successful execution, with return data as below
 
-Returns table of all available service types 
- 
+Returns table of all available service types:  resptable\['\_services.\_dns-sd.\_udp.local'\].servicetypes
  
 ### get_services (<*service_type*>, <*callback*>)
 
 - *service_type* - typically in the form \_xxxxx.\_tcp.local
 - *callback* - function called upon successful execution, with return data as below
 
-Returns table of all available instances for the given service type.  Most devices will also return whatever info is available including ip address, hostnames, port number, and info table.
+Returns table of all available instances for the given service type:  resptable\['\<*service_type*\>'\].instances
+
+Most devices will also return whatever info is available including ip address, hostnames, port number, and info table.
  
  
 ### get_ip (<*instance_name*> | <*host_name*>, <*callback*>)
@@ -51,7 +54,7 @@ Returns table of all available instances for the given service type.  Most devic
 - *host_name* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services**) 
 - *callback* - function called upon successful execution, with return data as below
 
-Returns IP address if found
+Returns IP address (string) if found
   
   
 ### get_address (<*domain_name*>, <*callback*>)
@@ -59,8 +62,25 @@ Returns IP address if found
 - *domain_name* - a *fully qualified* domain name; must be \<instance name\>.\<service type\>.local, e.g. 'Philips Hue - 1A2F3B.\_hue.\_tcp.local'
 - *callback* - function called upon successful execution, with return data as below
 
-Returns IP and port number if found
+Returns IP (string) and port number (number) if found
 
+## A Typical Discovery Sequence
+### Step 1: Figure out the Service Type Name
+In order to find a service on the network, you first need to know what service type that service is using.  For example, services that have web pages would announce an http service of type \_http.\_tcp.local; services with printing capabilities would announce a printer service of type \_printer.\_tcp.local, etc.  An official list of service type names are maintained here:  https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xml.  However, manufacturers or service developers may choose to make up their own service type names, so some might not be officially registered.
+
+A list of all service types available on your LAN can be gotten using the **get_service_types()** API.
+
+### Step 2: Get a list of all service instances for a given service type
+By providing a service type to the **get_services()** API, such as *\_printer.\_tcp.local*, you can get a list of all service instances that are available on the LAN.  An 'instance' is simply one particular service of the given type.  It will have a unique instance name plus the service type suffix, i.e. \<*serviceinstance*\>.\_*xxxxxxx*.\_tcp.local.
+  
+Quite often, services will return several pieces of additional information, so the table returned from the **get_services()** call may contain not only a list of the available service names, but for some of them it may also include associated hostnames, IP addresses, and/or addtional text information made up of key/value pairs.  Scanning the returned table for the presence of this additional information may negate the need for further queries.
+  
+### Step 3: Get the IP address of the service
+If the IP address was not included in the returned table from Step 2, then an explicit query can be done using the **get_ip()** API.  If the port number is required as well, then use the **get_address()** API.  
+
+In many cases, in order for a **get_ip()** request to return an IP, you have to use a hostname rather than the service instance name.  In those cases it may be more expedient to use the **get_address()** API instead, since it will attempt to determine the hostname automatically, freeing you from that interim step
+
+If the developer wants to obtain the hostname themselves, this can be done using the **query()** API with an **SRV** record request.
 
 ## Problems
 
@@ -81,7 +101,7 @@ A common issue when trying to run code utilizing multicast addresses is getting 
 
 ## Quick mDNS Primer
 
-mDNS defines a way for services (including applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There five type of these records generally used by mDNS participants:
+mDNS defines a way for services (including applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
 
 - PTR - provides instances of a particular service type
 - SRV - provides additional servernames or hostnames, plus port number associated with the service
@@ -117,3 +137,5 @@ mDNS uses a confusing array of 'names' to represent the various entities referen
         * OR *
         a hostname or server name in the form of \<hostname\>.local (obtained from SRV record)
 - Returns: IPv4 address (no port number)
+
+
