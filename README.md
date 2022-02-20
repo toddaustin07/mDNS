@@ -82,10 +82,6 @@ In many cases, in order for a **get_ip()** request to return an IP, you have to 
 
 If the developer wants to obtain the hostname themselves, this can be done using the **query()** API with an **SRV** record request.
 
-## Problems
-
-A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Or other networking configuration may need to be done to ensure the port is shared. 
-
 ## Quick mDNS Primer
 
 mDNS defines a way for services (i.e. applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
@@ -124,6 +120,12 @@ For each response record type requested in a query, there is a specific name for
         * OR *
         a hostname or server name in the form of \<*hostname*\>.local (obtained from SRV record)
 - Returns: IPv4 address (no port number)
+
+
+## Running the code on a computer other than a SmartThings hub
+
+A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Or other networking configuration may need to be done to ensure the port is shared. 
+
 
 ## Update Log
 02/08/22 01:02    Handle spaces in names; add processing for Authority and Additional Information records
