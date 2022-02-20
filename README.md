@@ -93,7 +93,7 @@ Most devices will also return whatever info is available including ip address, h
 #### get_ip (<*instance_name*> | <*host_name*>, <*callback*>)
 
 - *instance_name* - typically in the form *instancename*.local 
-- *host_name* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services**) 
+- *host_name* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services()**) 
 - *callback* - function called upon successful execution, with return data as below
 
 Returns IP address (string) if found
