@@ -95,7 +95,7 @@ mDNS defines a way for services (i.e. applications or devices) on a **local** ne
 - SRV - provides hostnames plus port numbers associated with the service
 - TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
 - A - provides an IPv4 address
-- AAAAA - provides an IPv6 address
+- AAAA - provides an IPv6 address
 
 
 ### Service Types
