@@ -40,7 +40,7 @@ Returns table of all available service types:  resptable\['\_services.\_dns-sd.\
  
 ### get_services (<*service_type*>, <*callback*>)
 
-- *service_type* - typically in the form \_xxxxx.\_tcp.local
+- *service_type* - typically in the form \_*xxxxx*.\_tcp.local
 - *callback* - function called upon successful execution, with return data as below
 
 Returns table of all available instances for the given service type:  resptable\['\<*service_type*\>'\].instances
