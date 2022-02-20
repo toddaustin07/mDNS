@@ -13,6 +13,45 @@ A version of this library is also available that can be run on any computer with
 
 A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Otherwise, other networking configuration may need to be done to ensure the port is shared. 
 
+## Quick mDNS Primer
+
+mDNS defines a way for services (i.e. applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
+
+- PTR - provides instances of a particular service type
+- SRV - provides hostnames plus port numbers associated with the service
+- TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
+- A - provides an IPv4 address
+- AAAA - provides an IPv6 address
+
+
+### Service Types
+All service types must have the format:
+```
+_<*typename*>._<[tcp | upd]>.local
+```
+And so some examples might be: \_http.\_tcp.local, \_printer.\_tcp.local, \_hue.\_tcp.local
+
+### Response records: queries and answers
+For each response record type requested in a query, there is a specific name format to use in order to get the expected results. The contents of the returned response record also varies by type.  This is summarized below:
+
+#### PTR Records
+- Input:  use a service type; such as '\_http.\_tcp.local'
+- Returns:  Fully qualified service instance names with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+  
+#### SRV Records
+- Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+- Returns:  a list of hostnames or server names in the form of \<*hostname*\>.local; plus associated port number
+  
+#### TXT Records
+- Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
+- Returns: set of key/value pairs
+  
+#### A records
+- Input: an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
+        * OR *
+        a hostname or server name in the form of \<*hostname*\>.local (obtained from SRV record)
+- Returns: IPv4 address (no port number)
+
 ## API
 There is really only one core API: **query()**.  The remaining APIs are wrappers that use this core API under the covers; they exist to simplify things for the developer and reduce the level of mDNS expertise needed to get productive use out of the library.
 
@@ -85,44 +124,6 @@ In many cases, in order for a **get_ip()** request to return an IP, you have to 
 
 If the developer wants to obtain the hostname themselves, this can be done using the **query()** API with an **SRV** record request.
 
-## Quick mDNS Primer
-
-mDNS defines a way for services (i.e. applications or devices) on a **local** network to be discovered.  It is implemented through the use of a special multicast address on which all services can 'advertise' their presence and provide additional information about the service.  A querier can send a 'question' to the multicast address and all services will respond if they have relevant 'answers' to the question.  An answer is always in the form of a formated response record.  There are five types of these records generally used by mDNS participants:
-
-- PTR - provides instances of a particular service type
-- SRV - provides hostnames plus port numbers associated with the service
-- TXT - provides a set of key/value pairs that provide select metadata about the service (e.g. model, serial number, etc.)
-- A - provides an IPv4 address
-- AAAA - provides an IPv6 address
-
-
-### Service Types
-All service types must have the format:
-```
-_<*typename*>._<[tcp | upd]>.local
-```
-And so some examples might be: \_http.\_tcp.local, \_printer.\_tcp.local, \_hue.\_tcp.local
-
-### Response records: queries and answers
-For each response record type requested in a query, there is a specific name format to use in order to get the expected results. The contents of the returned response record also varies by type.  This is summarized below:
-
-#### PTR Records
-- Input:  use a service type; such as '\_http.\_tcp.local'
-- Returns:  Fully qualified service instance names with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
-  
-#### SRV Records
-- Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
-- Returns:  a list of hostnames or server names in the form of \<*hostname*\>.local; plus associated port number
-  
-#### TXT Records
-- Input: use an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9._hue._tcp.local
-- Returns: set of key/value pairs
-  
-#### A records
-- Input: an instance name with the form \<*instancename*\>.\<*servicetype*\>; e.g. Philps Hue - 1E73F9.\_hue.\_tcp.local
-        * OR *
-        a hostname or server name in the form of \<*hostname*\>.local (obtained from SRV record)
-- Returns: IPv4 address (no port number)
 
 
 ## Update Log
