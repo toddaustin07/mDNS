@@ -8,18 +8,23 @@ In its current form, this library provides what is considered a 'one-shot query'
 The API is intended to be simple to use and not require deep understanding of the mDNS protocol.  Much of the behind-the-scenes DNS gorp is hidden and responses are provided in collated Lua tables for ease of parsing.  For those knowledgeable and wanting more direct control, one of the API calls available provides a more detailed and perscriptive way to define the desired query.
 
 ## SmartThings Edge
-The code has developed for use by a SmartThings Edge driver which runs on a SmartThings hub.  However a version is also available that can be run on any computer with Lua 5.3 or later installed, along with the Lua sockets library.  It is quite useful to test various queries, see what reponses are received, and what data is returned.
+The code was developed ultimately for use by a SmartThings Edge driver which runs on a SmartThings hub.  To use this library in a SmartThings Edge driver, create a subdirectory called '**mDNS**' off of the src directory of the driver hub package, and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
-To use this library in a SmartThings Edge driver, create a subdirectory called '**mDNS**' off of the src directory of the driver hub package, and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
+## Running on any computer
+A version of this library is also available that can be run on any computer with Lua 5.3 or later + Lua sockets library.  It is quite useful to test various queries, see what reponses are received, and what data is returned.
+
+A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Otherwise, other networking configuration may need to be done to ensure the port is shared. 
 
 ## API
-A work in progress, but currently supports the APIs below.  There is really only one core API: query().  The remaining APIs are wrappers that use this core API under the covers; their purpose is to simplify things and reduce the level of mDNS expertise needed to get productive use out of the library.
+There is really only one core API: **query()**.  The remaining APIs are wrappers that use this core API under the covers; they exist to simplify things for the developer and reduce the level of mDNS expertise needed to get productive use out of the library.
 
-Pay close attention to the guidance on what name formats are required for each wrapper API for the highest chance of success.  Using the wrong name format will typically result in no responses, or responses you don't want.
+Pay close attention to the guidance below on what name formats are required for each wrapper API.  Using the wrong name format will typically result in no responses, or responses you don't want.
 
-All APIs are implemented with a callback parameter, so have no direct return value.  For the return table descriptions below, we will assume the table returned to the callback is called '*resptable*'
+All APIs are implemented with a callback parameter, so have no direct return value.  Return data is passed to the callback provided. For the return table descriptions below, we will assume the table returned to the callback is called '*resptable*'
 
-### query (<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
+### Core API
+
+#### query (<*domain_name*>, <*type*>, <*duration*>, <*callback*>)
 
 (For the mDNS-knowledgeable who want more specific control)
 
@@ -31,13 +36,14 @@ All APIs are implemented with a callback parameter, so have no direct return val
 Returns table of discovered services and associated metadata (depends on record type returned, but can include name, alternative domain names, IP address, port, service info)
   
  
-### get_service_types (<*callback*>)
+### Wrapper APIs
+#### get_service_types (<*callback*>)
 
 - *callback* - function called upon successful execution, with return data as below
 
 Returns table of all available service types:  resptable\['\_services.\_dns-sd.\_udp.local'\].servicetypes
  
-### get_services (<*service_type*>, <*callback*>)
+#### get_services (<*service_type*>, <*callback*>)
 
 - *service_type* - typically in the form \_*xxxxx*.\_tcp.local
 - *callback* - function called upon successful execution, with return data as below
@@ -47,7 +53,7 @@ Returns table of all available instances for the given service type:  resptable\
 Most devices will also return whatever info is available including ip address, hostnames, port number, and info table.
  
  
-### get_ip (<*instance_name*> | <*host_name*>, <*callback*>)
+#### get_ip (<*instance_name*> | <*host_name*>, <*callback*>)
 
 - *instance_name* - typically in the form *instancename*.local 
 - *host_name* - typically in the form *hostname*.local   (note that *hostname* could be included in the table returned from **get_services**) 
@@ -56,7 +62,7 @@ Most devices will also return whatever info is available including ip address, h
 Returns IP address (string) if found
   
   
-### get_address (<*domain_name*>, <*callback*>)
+#### get_address (<*domain_name*>, <*callback*>)
 
 - *domain_name* - a *fully qualified* domain name; must be \<*instance_name*\>.\<*service_type*\>, e.g. 'Philips Hue - 1A2F3B.\_hue.\_tcp.local'
 - *callback* - function called upon successful execution, with return data as below
@@ -119,11 +125,6 @@ For each response record type requested in a query, there is a specific name for
         * OR *
         a hostname or server name in the form of \<*hostname*\>.local (obtained from SRV record)
 - Returns: IPv4 address (no port number)
-
-
-## Running the code on a computer other than a SmartThings hub
-
-A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Or other networking configuration may need to be done to ensure the port is shared. 
 
 
 ## Update Log
