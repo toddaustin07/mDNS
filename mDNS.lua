@@ -21,10 +21,8 @@
 
 --]]
 
-local cosock = require "cosock"
-local socket = require "cosock.socket"
---local socket = require "socket"
-local log = require "log"
+
+local socket = require "socket"
 
 ----------------------------------------------------------------------------------------------
 --                          DNS Message Constants
@@ -129,14 +127,14 @@ local function init_sockets()
   local m = socket.udp()
   
   if not m then
-    log.error ('UDP multicast socket creation failed')
+    print ('UDP multicast socket creation failed')
     return
   end
 
   assert(m:setoption('reuseaddr', true))
   rc, msg = m:setsockname(mdnsADDRESS, mdnsPORT)
   if not rc then
-    log.error ('multicast setsockname error:', msg)
+    print ('multicast setsockname error:', msg)
     return
   end
 
@@ -148,13 +146,13 @@ local function init_sockets()
   local u = socket.udp()
   
   if not u then
-    log.error ('UDP unicast socket creation failed')
+    print ('UDP unicast socket creation failed')
     return
   end
   
   rc, msg = u:setsockname(listen_ip, listen_port)
   if not rc then
-    log.error ('unicast setsockname error:', msg)
+    print ('unicast setsockname error:', msg)
     return
   end
 
@@ -202,7 +200,7 @@ local function dns_send(sock, rrtype, name)
   local rc, msg
   rc, msg = sock:sendto(question, mdnsADDRESS, mdnsPORT)
   if not rc then
-    log.error ('Send error:', msg)
+    print ('Send error:', msg)
     return
   else
     return true
@@ -240,7 +238,7 @@ local function get_label(currlabel, fullmsg, compflag)
       return nil, nil, nil, compflag, true
     end
   else
-    log.error ('***Error: unexpected null string length')
+    print ('***Error: unexpected null string length')
   end
 end
 
@@ -261,7 +259,7 @@ local function build_name_from_labels(data, fullmsg)
   
     _name, _len, nextlabel, compflag, endflag = get_label(nextlabel, fullmsg, compflag)
 
-    --log.debug ('_name/_len:', _name, _len)
+    --print ('_name/_len:', _name, _len)
 
     if endflag == false then
 
@@ -273,8 +271,8 @@ local function build_name_from_labels(data, fullmsg)
       
       totalnamelen = totalnamelen + _len
       
-      --log.debug (string.format('\tNext Label length: 0x%02X', nextlabel:byte())) 
-      --log.debug (string.format('\tNext label: >%s<', nextlabel:sub(2, 40)))
+      --print (string.format('\tNext Label length: 0x%02X', nextlabel:byte())) 
+      --print (string.format('\tNext label: >%s<', nextlabel:sub(2, 40)))
     
     end
     
@@ -288,7 +286,7 @@ local function build_name_from_labels(data, fullmsg)
     
   suffixdata = data:sub(totalnamelen+1)
   
-  --log.debug ('Built name:', name, totalnamelen)
+  --print ('Built name:', name, totalnamelen)
   
   return name, totalnamelen, suffixdata
 
@@ -358,9 +356,9 @@ local function parse_txt(txt)
           key = item:match('^(.+)=')        -- try to get key without value
           if key then
             itemtable[key] = ''
-            log.debug (string.format('Parsed txt item: key %s = value %s', key, value))
+            print (string.format('Parsed txt item: key %s = value %s', key, value))
           else
-            log.warn (string.format("Non-standard txt record (%s of %s in %s)", item, nextitem, txt))
+            print (string.format("Non-standard txt record (%s of %s in %s)", item, nextitem, txt))
             itemtable[item] = item				-- not sure what else to do??
           end
         else
@@ -369,7 +367,7 @@ local function parse_txt(txt)
           else
             itemtable[key] = ''
           end
-          log.debug (string.format('Parsed txt item: key %s = value %s', key, value))
+          print (string.format('Parsed txt item: key %s = value %s', key, value))
         end
         
         local next = itemlen
@@ -459,7 +457,7 @@ local function process_response(msgdata)
               keyname = 'Instance'
             end
             
-            log.debug (string.format('PTR record: %s / %s', section_record.name, domain))
+            print (string.format('PTR record: %s / %s', section_record.name, domain))
             
             table.insert(record_table, 
                               { ['Name'] = section_record.name,
@@ -499,13 +497,13 @@ local function process_response(msgdata)
         return record_table
         
       else
-        log.warn ('Warning; No response records')
+        print ('Warning; No response records')
       end
     --else
       --print ('Not authoritative answer')
     end
   else
-    log.warn ('Warning: Transaction ID not 0')
+    print ('Warning: Transaction ID not 0')
   end
     
 end
@@ -553,12 +551,12 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
               if response_data then
               
                 if sock == m then
-                  log.debug (string.format('Multicast response received from %s', rip))
+                  print (string.format('Multicast response received from %s', rip))
                 else
-                  log.debug (string.format('Unicast response received from %s', rip))
+                  print (string.format('Unicast response received from %s', rip))
                 end
-                -- log.debug (string.format('Received response from %s:', rip))
-                -- log.debug (hex_dump(response_data))
+                -- print (string.format('Received response from %s:', rip))
+                -- print (hex_dump(response_data))
                 
                 local records = process_response(response_data)
                 
@@ -582,11 +580,11 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
                   end
                 end
               else
-                log.error ('Receive error = ', rip)
+                print ('Receive error = ', rip)
               end
             end
           else
-            log.warn (string.format('No sockets ready; time left=%f', time_remaining))
+            print (string.format('No sockets ready; time left=%f', time_remaining))
           end
         else
           break
@@ -668,7 +666,7 @@ local function scan(name, rrtype, listen_time)
       
     end
   else
-    log.error ('Missing parameter(s) for query() or scan()')
+    print ('Missing parameter(s) for query() or scan()')
   end
 end
 
@@ -678,7 +676,7 @@ local function query(name, rrtype, listen_time, callback)
   if callback then
     callback (scan(name, rrtype, listen_time))
   else
-    log.error ('Missing callback parameter for query()')
+    print ('Missing callback parameter for query()')
   end
 
 end
@@ -689,7 +687,7 @@ local function get_service_types(callback)
   if callback then
     callback (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
   else
-    log.error ('Missing callback parameter for get_service_types()')
+    print ('Missing callback parameter for get_service_types()')
   end
 
 end
@@ -709,7 +707,7 @@ local function get_services(servtype, callback, listen_time)
       
     end
   else
-    log.error ('Missing parameters for get_services()')
+    print ('Missing parameters for get_services()')
   end
 end
 
@@ -727,7 +725,7 @@ local function get_ip(instancename, callback)
       end
     end
   else
-    log.error ('Missing parameters for get_ip()')
+    print ('Missing parameters for get_ip()')
   end
 end
 
@@ -739,17 +737,17 @@ local function get_address(domainname, callback)
     
     local instancename = domainname:match('^([^%.]+)%.')
     if not instancename then
-      log.error ('Invalid domain name provided')
+      print ('Invalid domain name provided')
       return
     else
       if instancename:sub(1,1) == '_' then
-        log.error ('Invalid domain name provided')
+        print ('Invalid domain name provided')
         return
       end
     end
     local class = '_' .. domainname:match('_(.+)')
     if not class then
-      log.error ('Service type not found')
+      print ('Service type not found')
       return
     end
   
@@ -790,7 +788,7 @@ local function get_address(domainname, callback)
       end
     
     if not hostname then
-      log.warn ('No hostname found for', domainname)
+      print ('No hostname found for', domainname)
     end
     socket.sleep(.1)
     
@@ -825,7 +823,7 @@ local function get_address(domainname, callback)
       end
     end
   else
-    log.error ('Missing parameters get_address()')
+    print ('Missing parameters get_address()')
   end
 end
 
