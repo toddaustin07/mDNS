@@ -82,10 +82,11 @@ Returns table of discovered services and associated metadata (depends on record 
 
 Returns table of all available service types:  resptable\['\_services.\_dns-sd.\_udp.local'\].servicetypes
  
-#### get_services (<*service_type*>, <*callback*>)
+#### get_services (<*service_type*>, <*callback*>, <*duration*>)
 
 - *service_type* - typically in the form \_*xxxxx*.\_tcp.local
 - *callback* - function called upon successful execution, with return data as below
+- *duration* - number of seconds to scan
 
 Returns table of all available instances for the given service type:  resptable\['\<*service_type*\>'\].instances
 
