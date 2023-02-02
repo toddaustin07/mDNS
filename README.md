@@ -5,7 +5,7 @@ In its current form, this library provides what is considered a 'one-shot query'
 
 The API is intended to be simple to use and not require deep understanding of the mDNS protocol.  Much of the behind-the-scenes DNS gorp is hidden and responses are provided in collated Lua tables for ease of parsing.  For those knowledgeable and wanting more direct control, one of the API calls available provides a more detailed and perscriptive way to define the desired query.
 
-JANUARY 2023 UPDATE:  Edge now includes a built-in mDNS library, so most SmartThings Edge driver developers can use that instead of my library here. This library might still be of interest to those looking for more detail access to response data or the ability to watch the mDNS multicast for a configurable amount of time.
+**JANUARY 2023 UPDATE:  SmartThings Edge now includes a built-in mDNS library, so most SmartThings Edge driver developers can use that instead of my library here. This library might still be of interest to those looking for more detail access to response data or the ability to watch the mDNS multicast for a configurable amount of time.**
 
 ## SmartThings Edge
 The code was developed ultimately for use by a SmartThings Edge driver which runs on a SmartThings hub.  To use this library in a SmartThings Edge driver, create a subdirectory called '**mDNS**' off of the src directory of the driver hub package, and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
