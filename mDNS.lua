@@ -21,8 +21,10 @@
 
 --]]
 
---local cosock = require "cosock"
-local socket = require "socket"
+local cosock = require "cosock"
+local socket = require "cosock.socket"
+--local socket = require "socket"
+local log = require "log"
 
 ----------------------------------------------------------------------------------------------
 --                          DNS Message Constants
@@ -127,18 +129,18 @@ local function init_sockets()
   local m = socket.udp()
   
   if not m then
-    print ('UDP multicast socket creation failed')
+    log.error ('UDP multicast socket creation failed')
     return
   end
 
-  --assert(m:setoption('reuseaddr', true))
+  assert(m:setoption('reuseaddr', true))
   rc, msg = m:setsockname(mdnsADDRESS, mdnsPORT)
   if not rc then
-    print ('multicast setsockname error:', msg)
+    log.error ('multicast setsockname error:', msg)
     return
   end
 
-  assert(m:setoption("ip-add-membership", {multiaddr = mdnsADDRESS, interface = "*"}), "join multicast group")
+  assert(m:setoption("ip-add-membership", {multiaddr = mdnsADDRESS, interface = "0.0.0.0"}), "join multicast group")
   --]]
 
   -- Unicast socket
@@ -146,13 +148,13 @@ local function init_sockets()
   local u = socket.udp()
   
   if not u then
-    print ('UDP unicast socket creation failed')
+    log.error ('UDP unicast socket creation failed')
     return
   end
   
   rc, msg = u:setsockname(listen_ip, listen_port)
   if not rc then
-    print ('unicast setsockname error:', msg)
+    log.error ('unicast setsockname error:', msg)
     return
   end
 
@@ -174,7 +176,7 @@ local function make_labels(name)
 
 end
 
-local function dns_send(m, rrtype, name)
+local function dns_send(sock, rrtype, name)
 
   local labels = make_labels(name)
 
@@ -198,9 +200,9 @@ local function dns_send(m, rrtype, name)
   --print (hex_dump(question))
   
   local rc, msg
-  rc, msg = m:sendto(question, mdnsADDRESS, mdnsPORT)
+  rc, msg = sock:sendto(question, mdnsADDRESS, mdnsPORT)
   if not rc then
-    print ('Send error:', msg)
+    log.error ('Send error:', msg)
     return
   else
     return true
@@ -238,7 +240,7 @@ local function get_label(currlabel, fullmsg, compflag)
       return nil, nil, nil, compflag, true
     end
   else
-    print ('***Error: unexpected null string length')
+    log.error ('***Error: unexpected null string length')
   end
 end
 
@@ -259,7 +261,7 @@ local function build_name_from_labels(data, fullmsg)
   
     _name, _len, nextlabel, compflag, endflag = get_label(nextlabel, fullmsg, compflag)
 
-    --print ('_name/_len:', _name, _len)
+    --log.debug ('_name/_len:', _name, _len)
 
     if endflag == false then
 
@@ -271,8 +273,8 @@ local function build_name_from_labels(data, fullmsg)
       
       totalnamelen = totalnamelen + _len
       
-      --print (string.format('\tNext Label length: 0x%02X', nextlabel:byte())) 
-      --print (string.format('\tNext label: >%s<', nextlabel:sub(2, 40)))
+      --log.debug (string.format('\tNext Label length: 0x%02X', nextlabel:byte())) 
+      --log.debug (string.format('\tNext label: >%s<', nextlabel:sub(2, 40)))
     
     end
     
@@ -286,12 +288,13 @@ local function build_name_from_labels(data, fullmsg)
     
   suffixdata = data:sub(totalnamelen+1)
   
-  --print ('built name:', name, totalnamelen)
-  --print ('- - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
+  --log.debug ('Built name:', name, totalnamelen)
   
   return name, totalnamelen, suffixdata
 
 end
+
+
 
 local function parse_question(question, fullmsg)
 
@@ -324,8 +327,6 @@ local function parse_section(section, fullmsg)
       length
     = string.unpack("> I2 I2 I4 I2", suffix_data)
   
-  --print (name, rrtype, class, ttl, rdlength, rdata, recordlen)
-  
   -- Return object table
   return  {
             ['name'] = name,
@@ -357,8 +358,10 @@ local function parse_txt(txt)
           key = item:match('^(.+)=')        -- try to get key without value
           if key then
             itemtable[key] = ''
+            log.debug (string.format('Parsed txt item: key %s = value %s', key, value))
           else
-            print ("ERROR parsing key")
+            log.warn (string.format("Non-standard txt record (%s of %s in %s)", item, nextitem, txt))
+            itemtable[item] = item				-- not sure what else to do??
           end
         else
           if value then
@@ -366,6 +369,7 @@ local function parse_txt(txt)
           else
             itemtable[key] = ''
           end
+          log.debug (string.format('Parsed txt item: key %s = value %s', key, value))
         end
         
         local next = itemlen
@@ -426,7 +430,7 @@ local function process_response(msgdata)
         local record_table = {}
         
         for item = 1, sectioncount do
-          
+
           local section_record  = parse_section(next_section, msgdata)
           
           if section_record.type == dnsRRType_A then
@@ -447,13 +451,15 @@ local function process_response(msgdata)
           elseif section_record.type == dnsRRType_PTR then
           
             local domain = build_name_from_labels(section_record.rdata, msgdata)
-
+            
             local keyname
             if section_record.name == '_services._dns-sd._udp.local' then
               keyname = 'ServiceType'
             else
               keyname = 'Instance'
             end
+            
+            log.debug (string.format('PTR record: %s / %s', section_record.name, domain))
             
             table.insert(record_table, 
                               { ['Name'] = section_record.name,
@@ -493,34 +499,17 @@ local function process_response(msgdata)
         return record_table
         
       else
-        print ('Warning; No response records')
+        log.warn ('Warning; No response records')
       end
     --else
       --print ('Not authoritative answer')
     end
   else
-    print ('Warning: Transaction ID not 0')
+    log.warn ('Warning: Transaction ID not 0')
   end
     
 end
 
-local function dump_to_file(records)
-
-  local logfile = io.open ('./mdns.log', 'a')
-  local writerec
-              
-  for i, value1 in ipairs(records) do
-    writerec = string.format('\nRecord #%d:\n', i)
-    logfile:write (writerec)
-    for key, value2 in pairs(value1) do
-      writerec = string.format('\t%s: %s\n',key, value2)
-      logfile:write (writerec)
-    end
-  end
-  logfile:write ('--------------------------------------------------\n')
-  logfile:close()
-
-end
 
 local function strip_local(name)
 
@@ -537,8 +526,9 @@ end
 local function collect(name, rrtype, listen_time, queryflag, instancename)
 
   m, u = init_sockets()
+  --u = init_sockets()
   
-  if m and u then
+  if u then
   
     if dns_send(u, rrtype, name) then
     
@@ -549,7 +539,9 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
       
       while true do
         local time_remaining = math.max(0, timeouttime-socket.gettime())
-        local readysocks, err = socket.select({u, m}, {}, time_remaining) 
+        local readysocks, err = socket.select({u, m}, {}, time_remaining)
+        
+        time_remaining = math.max(0, timeouttime-socket.gettime())
         
         if time_remaining > 0 then
           if readysocks then
@@ -559,19 +551,18 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
               local response_data, rip, _ = sock:receivefrom()
               
               if response_data then
-
+              
                 if sock == m then
-                  print (string.format('Multicast response received from %s', rip))
+                  log.debug (string.format('Multicast response received from %s', rip))
                 else
-                  print (string.format('Unicast response received from %s', rip))
+                  log.debug (string.format('Unicast response received from %s', rip))
                 end
-                --print (string.format('Received response from %s:', rip))
-                --print (hex_dump(response_data))
+                -- log.debug (string.format('Received response from %s:', rip))
+                -- log.debug (hex_dump(response_data))
                 
                 local records = process_response(response_data)
                 
                 if records then
-                  dump_to_file(records)
                 
                   if queryflag == true then
                     local _name = name
@@ -591,21 +582,21 @@ local function collect(name, rrtype, listen_time, queryflag, instancename)
                   end
                 end
               else
-                print ('Receive error = ', rip)
+                log.error ('Receive error = ', rip)
               end
             end
           else
-            print ('No sockets ready; error = ', err)
+            log.warn (string.format('No sockets ready; time left=%f', time_remaining))
           end
         else
           break
         end
       end
-       m:close()
+      m:close()
       u:close()
       return return_object
     end
-     m:close()
+    m:close()
     u:close()
   end
 end
@@ -625,69 +616,35 @@ local function consolidate(rrtable, key, value)
 
 end
 
-local function collate(target, collection)
+local function collate(collection)
   
   local collated = {}
-  local name
-  
-  --local target_name = target:match('^([^%.]+)%.')
-  --local _type, _proto = target:match('(_[^%.]+).(_[^%.]+)')
-  --local target_type = _type .. '.' .. _proto 
   
   for _, group in ipairs(collection) do
     for _, records in ipairs(group) do
       local instance
       for key, value in pairs(records) do
         if key == 'Name' then
-
-          --[[
-          if value:find('in-addr.arpa', 1, 'plaintext') or (value:sub(1,1) == '_') then
-            name = value
-          else
-            name = value:match('^([^%.]+)%.')
-            if not name then
-              name = value
-            end
-          end
-          --]]
-
-          ---[[
           name = value
           if not collated[name] then
             collated[name] = {}
           end
-          --]]
-          
-          --[[
-          name = value
-          if value:find(target_name, 1, 'plaintext') or value:find(target_type, 1, 'plaintext') then
-            if not collated[name] then
-              collated[name] = {}
-            end
-          else
-            print ('Name not target:', name)
-            name = nil
-          end
-          --]]
         end
       end
           
-          
-      if name then
-        for key, value in pairs(records) do
-          if key == 'IP' then
-            collated[name].ip = value
-          elseif key == 'Port' then
-            collated[name].port = value
-          elseif key == 'Instance' then
-            consolidate(collated[name], 'instances', value)
-          elseif key == 'ServiceType' then
-            consolidate(collated[name], 'servicetypes', value)
-          elseif key == 'Hostname' then
-            consolidate(collated[name], 'hostnames', value)
-          elseif key == 'Info' then
-            collated[name].info = value
-          end
+      for key, value in pairs(records) do
+        if key == 'IP' then
+          collated[name].ip = value
+        elseif key == 'Port' then
+          collated[name].port = value
+        elseif key == 'Instance' then
+          consolidate(collated[name], 'instances', value)
+        elseif key == 'ServiceType' then
+          consolidate(collated[name], 'servicetypes', value)
+        elseif key == 'Hostname' then
+          consolidate(collated[name], 'hostnames', value)
+        elseif key == 'Info' then
+          collated[name].info = value
         end
       end
       
@@ -701,83 +658,103 @@ end
 
 local function scan(name, rrtype, listen_time)
 
-  --print ('scan input:', name, rrtype, listen_time)
-
   if name and rrtype and listen_time then
 
     local collection = collect(name, rrtype, listen_time, false)
     
     if collection then
     
-      return (collate(name, collection))
+      return (collate(collection))
       
     end
   else
-    log.warn ('Missing parameter(s) for scan()')
+    log.error ('Missing parameter(s) for query() or scan()')
   end
 end
 
-local function query(name, rrtype, listen_time)
 
-  return (scan(name, rrtype, listen_time))
+local function query(name, rrtype, listen_time, callback)
+
+  if callback then
+    callback (scan(name, rrtype, listen_time))
+  else
+    log.error ('Missing callback parameter for query()')
+  end
 
 end
 
-local function get_services(servtype)
 
-  if servtype then
+local function get_service_types(callback)
 
-    local collection = collect(servtype, dnsRRType_PTR, 1.5, false)
+  if callback then
+    callback (scan('_services._dns-sd._udp.local', dnsRRType_ANY, 2))
+  else
+    log.error ('Missing callback parameter for get_service_types()')
+  end
+
+end
+
+
+local function get_services(servtype, callback, listen_time)
+
+  if servtype and callback then
+
+    if listen_time == nil then; listen_time = 2; end
+
+    local collection = collect(servtype, dnsRRType_PTR, listen_time, false)
     
     if collection then
     
-      return (collate(servtype, collection))
+      callback (collate(collection))
       
     end
   else
-    log.warn ('Missing service name for get_services()')
+    log.error ('Missing parameters for get_services()')
   end
 end
 
-local function get_ip(instancename)
+local function get_ip(instancename, callback)
 
-  if instancename then
-
+  if instancename and callback then
     local records = collect(instancename, dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
         for key, value in pairs(records[i]) do
           if key == 'IP' then
-            return(value)
+            callback(value)
           end
         end
       end
     end
   else
-    log.warn ('Missing instance name for get_ip()')
+    log.error ('Missing parameters for get_ip()')
   end
 end
 
-local function get_address(domainname)
+local function get_address(domainname, callback)
 
-  if domainname then
+  if domainname and callback then
   
     local ip, port
     
     local instancename = domainname:match('^([^%.]+)%.')
     if not instancename then
-      print ('Invalid domainname')
+      log.error ('Invalid domain name provided')
       return
+    else
+      if instancename:sub(1,1) == '_' then
+        log.error ('Invalid domain name provided')
+        return
+      end
     end
     local class = '_' .. domainname:match('_(.+)')
     if not class then
-      print ('Service type not found')
+      log.error ('Service type not found')
       return
     end
   
-    -- First try PTR requests, as it may have both IP and port
+    -- First try PTR requests, as the response may have both IP and port
     
-    --print ('PTR Request')
     records = collect(class, dnsRRType_PTR, 1.5, true, instancename)
     if records then
       for i = 1, #records do
@@ -791,10 +768,11 @@ local function get_address(domainname)
       end
       
       if ip and port then
-        return ip, port
+        callback (ip, port)
       end
     end
-    -- Try getting IP and port separately
+    
+    -- If IP & port not gotten from PTR query, try getting IP and port separately
     
     -- Step 1: Try an SRV request, as its returned hostname may be needed to get IP
       local hostname
@@ -811,9 +789,12 @@ local function get_address(domainname)
         end
       end
     
+    if not hostname then
+      log.warn ('No hostname found for', domainname)
+    end
     socket.sleep(.1)
     
-    -- Step 2: Try an IP ('A') Request
+    -- Step 2: Try an IP ('A') Request with <instancename>.local
     local records = collect(instancename .. '.local', dnsRRType_A, 1, true)
     if records then
       for i = 1, #records do
@@ -825,28 +806,32 @@ local function get_address(domainname)
       end
 
       if ip and port then
-        return ip, port
+        callback(ip, port)
       else
-        local records = collect(hostname, dnsRRType_A, 1, true)
-        if records then
-          for i = 1, #records do
-            for key, value in pairs(records[i]) do
-              if key == 'IP' then
-                ip = value
+        if hostname then
+        -- Step 3: Try an IP ('A') Request with hostname from SRV record
+          local records = collect(hostname, dnsRRType_A, 1, true)
+          if records then
+            for i = 1, #records do
+              for key, value in pairs(records[i]) do
+                if key == 'IP' then
+                  ip = value
+                end
               end
             end
           end
-        end
-        return ip, port
+        end  
+        callback(ip, port)
       end
     end
   else
-    log.warn ('Missing domanin name for get_address()')
+    log.error ('Missing parameters get_address()')
   end
 end
 
 return  {
           query = query,
+          get_service_types = get_service_types,
           get_services = get_services,
           get_address = get_address,
           get_ip = get_ip,

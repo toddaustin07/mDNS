@@ -358,8 +358,10 @@ local function parse_txt(txt)
           key = item:match('^(.+)=')        -- try to get key without value
           if key then
             itemtable[key] = ''
+            log.debug (string.format('Parsed txt item: key %s = value %s', key, value))
           else
-            log.error ("ERROR parsing key")
+            log.warn (string.format("Non-standard txt record (%s of %s in %s)", item, nextitem, txt))
+            itemtable[item] = item				-- not sure what else to do??
           end
         else
           if value then
@@ -367,6 +369,7 @@ local function parse_txt(txt)
           else
             itemtable[key] = ''
           end
+          log.debug (string.format('Parsed txt item: key %s = value %s', key, value))
         end
         
         local next = itemlen
@@ -692,11 +695,13 @@ local function get_service_types(callback)
 end
 
 
-local function get_services(servtype, callback)
+local function get_services(servtype, callback, listen_time)
 
   if servtype and callback then
 
-    local collection = collect(servtype, dnsRRType_PTR, 2, false)
+    if listen_time == nil then; listen_time = 2; end
+
+    local collection = collect(servtype, dnsRRType_PTR, listen_time, false)
     
     if collection then
     
