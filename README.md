@@ -11,7 +11,7 @@ JANUARY 2023 UPDATE:  Edge now includes a built-in mDNS library, so most SmartTh
 The code was developed ultimately for use by a SmartThings Edge driver which runs on a SmartThings hub.  To use this library in a SmartThings Edge driver, create a subdirectory called '**mDNS**' off of the src directory of the driver hub package, and copy the init.lua file provided from the SmartThingsEdge directory in this repository into it.  Add a **require = 'mDNS'** statement to your Edge driver code and use the APIs as described below.
 
 ## Running on any computer
-A version of this library (mDNS.lua) in root code directory is also available that can be run on any computer with Lua 5.3 or later + Lua sockets library.  It is quite useful to test various queries, see what reponses are received, and what data is returned.
+A version of this library (mDNS.lua in root code directory) is also available that can be run on any computer with Lua 5.3 or later + Lua sockets library.  It is quite useful to test various queries, see what reponses are received, and what data is returned.
 
 A common issue when trying to run code utilizing multicast addresses is getting 'address already in use' errors.  This is an indication that some other process on the computer has already claimed port 5353 and is not sharing it.  These services or applications can often be terminated without harm.  Avahi, browsers, or any other mDNS-related applications may need to be shut down to free up port 5353.  Otherwise, other networking configuration may need to be done to ensure the port is shared. 
 
